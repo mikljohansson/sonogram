@@ -1,5 +1,8 @@
 package se.embargo.sonar.widget;
 
+import java.util.Arrays;
+
+import se.embargo.sonar.ISonarListener;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -7,7 +10,7 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.util.AttributeSet;
 
-public class HistogramView extends BufferedView {
+public class HistogramView extends BufferedView implements ISonarListener {
 	private final Paint _outline;
 	
 	private int _maxgenerations = 4, _generation = 0, _valuecount = 0;
@@ -46,7 +49,7 @@ public class HistogramView extends BufferedView {
 		}
 	}
 	
-	public void update(int x, float[] values) {
+	public void receive(int x, float[] values) {
 		int xg = x + _resolution * _generation;
 		System.arraycopy(values, 0, _history, xg, values.length);
 		
@@ -63,36 +66,40 @@ public class HistogramView extends BufferedView {
 	@Override
 	protected synchronized void draw(Canvas canvas, Rect dataWindow, Rect canvasWindow) {
     	Rect resolution = getResolution();
-	    float step = (float)canvasWindow.width() / (float)dataWindow.width();
 	    float maxval = 0;
 	    int maxpos = 0;
 
 	    {
-	    	float x = canvasWindow.left;
-		    int prev = (int)x;
+	    	int accn = canvasWindow.width() * _resolution / dataWindow.width();
 		    
 		    // Allocate a buffer to hold the accumulators
-		    int accn = canvasWindow.width() * _resolution / dataWindow.width() + 1;
 		    if (_accumulators == null || _accumulators.length != accn) {
-		    	_accumulators = new float[accn];
+		    	_accumulators = new float[accn + 1];
 		    }
+		    Arrays.fill(_accumulators, 0f);
 	
 		    // Accumulate values for each data point
-		    for (int i = 0, xi = (int)x; i < _resolution && xi < accn; i++, xi = (int)x) {
-		    	_accumulators[xi] = 0;
-		    	
+		    float x = 0, step = (float)accn / (float)_resolution;
+		    for (int i = 0, xi = (int)x, prev = 0; i < _resolution && xi < accn; i++) {
+		    	// Accumulate values from each generation to average out the noise
+		    	float value = 0;
 		    	for (int j = 0; j < _maxgenerations; j++) {
-		    		_accumulators[xi] += Math.abs(_history[j * _resolution + i]);
+		    		value += _history[j * _resolution + i];
 		    	}
 		    	
+		    	// Use the absolute value
+		    	_accumulators[xi] += Math.abs(value);
+		    	
 		    	x += step;
-		    	if ((int)x != prev) {
-	    	    	if (_accumulators[xi] > maxval) {
+		    	if (prev != (int)x) {
+		    		// Find the maximum value
+		    		if (_accumulators[xi] > maxval) {
 	    	    		maxval = _accumulators[xi];
 	    	    		maxpos = xi;
 	    	    	}
 	    	    	
-	    	    	prev = (int)x;
+	    	    	prev = xi;
+	    	    	xi = (int)x;
 		    	}
 		    }
 	    }
@@ -106,7 +113,7 @@ public class HistogramView extends BufferedView {
 		    
 		    for (int i = canvasWindow.left, j = _accumulators.length * dataWindow.left / _resolution; i < canvasWindow.right && j < _accumulators.length; i++, j++) {
 		    	// Scale the value logarithmically into the maximum height
-		    	float value = _accumulators[((maxpos + j) % _accumulators.length)];
+		    	float value = Math.abs(_accumulators[((maxpos + j) % _accumulators.length)]);
 		    	//value = (float)Math.floor(factor * Math.log(value + 1)) - bottom;
 		    	value = factor * value - bottom;
 		    	canvas.drawLine(i, canvasWindow.bottom, i, canvasWindow.bottom - value, _outline);

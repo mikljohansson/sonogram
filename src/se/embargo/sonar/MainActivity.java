@@ -22,15 +22,10 @@ public class MainActivity extends SherlockFragmentActivity {
 		_histogramView = (HistogramView)findViewById(R.id.histogram);
 		
 		_sonar = new Sonar();
-		_sonar.addListener(new ISonarListener() {
-			@Override
-			public void receive(int offset, float[] output) {
-				_histogramView.update(offset, output);
-			}
-		});
+		_sonar.addListener(_histogramView);
 		
 		_histogramView.setResolution(_sonar.getResolution());
-		//_histogramView.setZoom((float)PULSEINTERVAL / PULSERANGE);
+		_histogramView.setZoom(3);
 	}
 	
 	@Override

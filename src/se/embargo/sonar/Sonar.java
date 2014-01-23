@@ -18,7 +18,6 @@ public class Sonar {
 	public static final int SAMPLERATE = 44100;
 	public static final int PULSEINTERVAL = 80;
 	private static final int PULSEDURATION = 20;
-	private static final int PULSERANGE = 10;
 	
 	private ISonarListener[] _listeners = new ISonarListener[0];
 	private Worker _inputworker, _outputworker;
@@ -125,6 +124,7 @@ public class Sonar {
 					// Read complete data chunk into first half of buffer
 					chunkoffset += record.read(samples, chunkoffset, chunksize - chunkoffset);
 					if (chunkoffset < chunksize) {
+						Thread.yield();
 						continue;
 					}
 
