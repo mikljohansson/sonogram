@@ -4,12 +4,12 @@ public class Signals {
 	/**
 	 * @param operator	Reversed time series of pulse to match
 	 */
-	public static void convolve(short[] data, double[] operator, double[] output) {
+	public static void convolve(short[] data, float[] operator, float[] output) {
 		for (int i = 0; i < data.length - operator.length; i++) {
 			output[i] = 0;
 			
 			for (int j = operator.length - 1; j >= 0; j--) {
-				output[i] += ((double)data[i + j] / Short.MAX_VALUE) * operator[j];
+				output[i] += ((float)data[i + j] / Short.MAX_VALUE) * operator[j];
 			}
 		}
 	}
@@ -19,18 +19,18 @@ public class Signals {
 	 * @param data	Output from convolve()
 	 * @param snr	Signal to noise ratio [0, 1]
 	 */
-	public static void detect(double[] data, double snr) {
-		double sum = 0;
+	public static void detect(float[] data, float snr) {
+		float sum = 0;
 		for (int i = 0; i < data.length; i++) {
 			sum += Math.max(0, data[i]);
 		}
 		
-		double mean = sum / data.length;
-		double threshold = mean * snr;
+		float mean = sum / data.length;
+		float threshold = mean * snr;
 		
 		for (int i = 0; i < data.length; i++) {
 			if (data[i] < threshold) {
-				data[i] = 0.0d;
+				data[i] = 0.0f;
 			}
 		}
 	}
@@ -39,8 +39,8 @@ public class Signals {
 	 * Detects spikes from pulses in the output from a convolution.
 	 * @param data	Output from convolve()
 	 */
-	public static void detect(double[] data) {
-		detect(data, 2.5d);
+	public static void detect(float[] data) {
+		detect(data, 2.5f);
 	}
 	
 	/**
@@ -53,18 +53,18 @@ public class Signals {
 	 * @param bandwidth		Pulse bandwidth in Hz
 	 * @return				A frequency modulated chirp
 	 */
-	public static double[] createLinearChirp(int samplerate, int duration, double amplitude, int frequency, int bandwidth) {
-		double[] pulse = new double[samplerate * duration / 1000];
+	public static float[] createLinearChirp(int samplerate, int duration, float amplitude, float frequency, float bandwidth) {
+		float[] pulse = new float[samplerate * duration / 1000];
 
 		// sin(2 * pi * (f2 - f1) / (2 * d) * ((x/s)^2) + 2 * pi * f1 * (x/s))  *  sin(2 * pi * (1 / d / 2) * (x/s)) ^ 0.25
-		double 
-			t = (double)duration / 1000d,
-			step = 2d * Math.PI * bandwidth / (2d * t) / ((double)samplerate * samplerate),
-			step2 = 2d * Math.PI * frequency / samplerate,
-			taper = 2d * Math.PI * (1d / t / 2d) / samplerate;
+		float 
+			t = (float)duration / 1000f,
+			step = 2f * (float)Math.PI * bandwidth / (2f * t) / ((float)samplerate * samplerate),
+			step2 = 2f * (float)Math.PI * frequency / samplerate,
+			taper = 2f * (float)Math.PI * (1f / t / 2f) / samplerate;
 		
 		for (int i = 0; i < pulse.length; i++) {
-			pulse[i] = Math.sin(step * i * i + step2 * i) * Math.pow(Math.sin(taper * i), 0.25) * amplitude;
+			pulse[i] = (float)(Math.sin(step * i * i + step2 * i) * Math.pow(Math.sin(taper * i), 0.25f) * amplitude);
 		}
 		
 		return pulse;
@@ -75,7 +75,7 @@ public class Signals {
 	 * @param data	Time series in range [-1, 1] to rebase into [Short.MIN_VALUE, Short.MAX_VALUE] 
 	 * @return		Rebased of time series
 	 */
-	public static short[] toShort(double[] data) {
+	public static short[] toShort(float[] data) {
 		short[] result = new short[data.length];
 		for (int i = 0; i < data.length; i++) {
 			result[i] = (short)(data[i] * Short.MAX_VALUE);
@@ -89,8 +89,8 @@ public class Signals {
 	 * @param data	Time series to reverse
 	 * @return		Reverse of input series
 	 */
-	public static double[] reverse(double[] data) {
-		double[] result = new double[data.length];
+	public static float[] reverse(float[] data) {
+		float[] result = new float[data.length];
 		for (int i = 0, j = data.length - 1; i < data.length; i++, j--) {
 			result[j] = data[i];
 		}

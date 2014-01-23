@@ -49,7 +49,7 @@ public abstract class BufferedView extends View {
 
 	public void setResolution(Rect resolution) {
 		_dataResolution = new Rect(resolution);
-		_zoomWindow = new Rect(resolution);
+		_zoomWindow = new Rect(_dataResolution);
 		_zoomx = _zoomWindow.left;
 		_zoomy = _zoomWindow.right;
 		_zoomw = _zoomWindow.width();
@@ -77,6 +77,8 @@ public abstract class BufferedView extends View {
 		_zoomWindow.top = Math.max((int)zoomy, _dataResolution.top);
 		_zoomWindow.right = Math.min(_zoomWindow.left + (int)zoomw, _dataResolution.right);
 		_zoomWindow.bottom = Math.min(_zoomWindow.top + (int)zoomh, _dataResolution.bottom);
+		
+		invalidateCanvas();
 	}
 	
 	public void setZoom(float zoom) {
@@ -91,9 +93,16 @@ public abstract class BufferedView extends View {
 		_zoomWindow.left = (int)_zoomx;
 		_zoomWindow.top = (int)_zoomy;
 		_zoomWindow.right = _zoomWindow.left + w;
-		_zoomWindow.top = _zoomWindow.top + h;
+		_zoomWindow.bottom = _zoomWindow.top + h;
+		
+		invalidateCanvas();
 	}
 	
+	protected synchronized void invalidateCanvas() {
+		_invalid = true;
+		invalidate();
+	}
+
 	protected synchronized void postInvalidateCanvas() {
 		_invalid = true;
 		postInvalidate();
@@ -168,6 +177,10 @@ public abstract class BufferedView extends View {
 						float zoomx = _zx + (_x - (x - _canvasWindow.left)) * xres, 
 							  zoomy = _zy + (_y - (y - _canvasWindow.top)) * yres;
 						setPosition(zoomx, zoomy);
+						_x = event.getX();
+						_y = event.getY();
+						_zx = _zoomx;
+						_zy = _zoomy;
 						result = true;
 					}
 					break;

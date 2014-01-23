@@ -35,7 +35,7 @@ public class MainActivity extends SherlockFragmentActivity {
 		new ArrayBlockingQueue<Runnable>(16), new ThreadPoolExecutor.DiscardOldestPolicy());
 	private final Queue<FilterTask> _filterpool = new ConcurrentLinkedQueue<FilterTask>();
 	
-	private double[] _pulse = Signals.createLinearChirp(SAMPLERATE, PULSEDURATION, 0.1d, SAMPLERATE / 8, SAMPLERATE / 4);
+	private float[] _pulse = Signals.createLinearChirp(SAMPLERATE, PULSEDURATION, 0.5f, (float)SAMPLERATE / 8, (float)SAMPLERATE / 4);
 	
 	private HistogramView _histogramView;
 	
@@ -46,7 +46,7 @@ public class MainActivity extends SherlockFragmentActivity {
 		setContentView(R.layout.main_activity);
 		_histogramView = (HistogramView)findViewById(R.id.histogram);
 		_histogramView.setResolution(SAMPLERATE * PULSEINTERVAL / 1000);
-		_histogramView.setZoom((float)PULSEINTERVAL / PULSERANGE);
+		//_histogramView.setZoom((float)PULSEINTERVAL / PULSERANGE);
 	}
 	
 	@Override
@@ -86,13 +86,13 @@ public class MainActivity extends SherlockFragmentActivity {
 	private class FilterTask implements Runnable {
 		private final int _chunksize;
 		private final short[] _samples;
-		private final double[] _output;
+		private final float[] _output;
 		private int _sampleoffset;
 		
 		public FilterTask(int chunksize) {
 			_chunksize = chunksize;
 			_samples = new short[_chunksize * 2];
-			_output  = new double[_chunksize];
+			_output  = new float[_chunksize];
 		}
 		
 		public void init(int sampleoffset, short[] samples) {
