@@ -13,8 +13,7 @@ import android.util.AttributeSet;
 public class HistogramView extends BufferedView implements ISonarListener {
 	private final Paint _outline;
 	
-	private int _maxgenerations = 4, _generation = 0, _valuecount = 0;
-	private float[] _history;
+	private float[] _values;
 	private float[] _accumulators;
 	private int _resolution;
 
@@ -35,7 +34,7 @@ public class HistogramView extends BufferedView implements ISonarListener {
 	
 	public synchronized void setResolution(int buckets) {
 		setResolution(new Rect(0, 0, buckets, getResolution() != null ? getResolution().bottom : 100));
-		_history = new float[buckets * _maxgenerations];
+		_values = new float[buckets];
 		_resolution = getResolution().width();
 	}
 	
@@ -49,18 +48,9 @@ public class HistogramView extends BufferedView implements ISonarListener {
 		}
 	}
 	
-	public void receive(int x, float[] values) {
-		int xg = x + _resolution * _generation;
-		System.arraycopy(values, 0, _history, xg, values.length);
-		
-		synchronized (this) {
-			_valuecount += values.length;
-			if (_valuecount >= _resolution) {
-				_generation = (_generation + 1) % _maxgenerations;
-				_valuecount = 0;
-				postInvalidateCanvas();
-			}
-		}
+	public synchronized void receive(float[] values) {
+		System.arraycopy(values, 0, _values, 0, values.length);
+		postInvalidateCanvas();
 	}
 	
 	@Override
@@ -81,14 +71,8 @@ public class HistogramView extends BufferedView implements ISonarListener {
 		    // Accumulate values for each data point
 		    float x = 0, step = (float)accn / (float)_resolution;
 		    for (int i = 0, xi = (int)x, prev = 0; i < _resolution && xi < accn; i++) {
-		    	// Accumulate values from each generation to average out the noise
-		    	float value = 0;
-		    	for (int j = 0; j < _maxgenerations; j++) {
-		    		value += _history[j * _resolution + i];
-		    	}
-		    	
 		    	// Use the absolute value
-		    	_accumulators[xi] += Math.abs(value);
+		    	_accumulators[xi] += Math.abs(_values[i]);
 		    	
 		    	x += step;
 		    	if (prev != (int)x) {

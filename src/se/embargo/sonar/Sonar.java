@@ -8,6 +8,11 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import se.embargo.core.concurrent.Parallel;
+import se.embargo.sonar.dsp.AverageFilter;
+import se.embargo.sonar.dsp.CompositeFilter;
+import se.embargo.sonar.dsp.FramerateCounter;
+import se.embargo.sonar.dsp.ISignalFilter;
+import se.embargo.sonar.dsp.MatchedFilter;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioRecord;
@@ -15,8 +20,8 @@ import android.media.AudioTrack;
 import android.media.MediaRecorder;
 
 public class Sonar {
-	public static final int SAMPLERATE = 44100;
-	public static final int PULSEINTERVAL = 80;
+	private static final int SAMPLERATE = 44100;
+	private static final int PULSEINTERVAL = 80;
 	private static final int PULSEDURATION = 20;
 	
 	private ISonarListener[] _listeners = new ISonarListener[0];
@@ -32,6 +37,11 @@ public class Sonar {
 	 * Sonar pulse time series.
 	 */
 	private float[] _pulse = Signals.createLinearChirp(SAMPLERATE, PULSEDURATION, 0.5f, (float)SAMPLERATE / 8, (float)SAMPLERATE / 4);
+	
+	/**
+	 * DSP filter to apply to samples
+	 */
+	private ISignalFilter _filter = new CompositeFilter(new MatchedFilter(), new AverageFilter(), new FramerateCounter());
 	
 	public int getResolution() {
 		return SAMPLERATE * PULSEINTERVAL / 1000;
@@ -56,31 +66,24 @@ public class Sonar {
 	}
 	
 	private class FilterTask implements Runnable {
-		private final int _chunksize;
-		private final short[] _samples;
-		private final float[] _output;
-		private int _sampleoffset;
+		private ISignalFilter.Item _item;
 		
-		public FilterTask(int chunksize) {
-			_chunksize = chunksize;
-			_samples = new short[_chunksize * 2];
-			_output  = new float[_chunksize];
+		public FilterTask(int samples) {
+			_item = new ISignalFilter.Item(SAMPLERATE, _pulse, samples + _pulse.length);
 		}
 		
-		public void init(int sampleoffset, short[] samples) {
-			_sampleoffset = sampleoffset;
-			System.arraycopy(samples, 0, _samples, 0, samples.length);
+		public void init(short[] samples) {
+			_item.init(samples);
 		}
 		
 		@Override
 		public void run() {
-			// Apply the matched filter convolution
-			Signals.convolve(_samples, _pulse, _output);
-			//Signals.detect(_output);
+			// Apply the filters
+			_filter.accept(_item);
 
-			// Update the histogram view
+			// Call the listeners
 			for (ISonarListener listener : _listeners) {
-				listener.receive(_sampleoffset, _output);
+				listener.receive(_item.output);
 			}
 
 			// Reuse this task
@@ -105,50 +108,41 @@ public class Sonar {
 	private class AudioInputWorker extends Worker {
 		@Override
 		public void run() {
+			int count = SAMPLERATE * PULSEINTERVAL / 1000;
+			int position = 0;
+			short[] samples = new short[count + _pulse.length];
+			
 			AudioRecord record = new AudioRecord(
 				MediaRecorder.AudioSource.CAMCORDER, SAMPLERATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, 
-				Math.max(AudioTrack.getMinBufferSize(SAMPLERATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT), _pulse.length * 2));
-			
-			int chunksize = _pulse.length;
-			int chunkoffset = 0;
-			
-			short[] samples = new short[chunksize * 2];
-
-			int maxsamples = SAMPLERATE * PULSEINTERVAL / 1000;
-			int sampleoffset = 0;
+				Math.max(AudioTrack.getMinBufferSize(SAMPLERATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT), count));
 			
 			try {
 				record.startRecording();
 
 				while (!_stop) {
 					// Read complete data chunk into first half of buffer
-					chunkoffset += record.read(samples, chunkoffset, chunksize - chunkoffset);
-					if (chunkoffset < chunksize) {
-						Thread.yield();
+					position += record.read(samples, position, count - position);
+					if (position < count) {
+						Thread.sleep(PULSEINTERVAL / 10);
 						continue;
 					}
 
 					// Allocate a new filter task
 					FilterTask task = _filterpool.poll();
 					if (task == null) {
-						task = new FilterTask(chunksize);
+						task = new FilterTask(count);
 					}
 				
 					// Perform the filter processing on the thread pool
-					task.init(sampleoffset, samples);
+					task.init(samples);
 					_threadpool.submit(task);
 					
 					// Make room for next data chunk
-					System.arraycopy(samples, 0, samples, chunksize, chunksize);
-					sampleoffset += chunksize;
-					chunkoffset = 0;
-					
-					// Prepare for next pulse interval
-					if (sampleoffset >= maxsamples) {
-						sampleoffset = 0;
-					}
+					System.arraycopy(samples, 0, samples, _pulse.length, count);
+					position = 0;
 				}
 			}
+			catch (InterruptedException e) {}
 			finally {
 				record.stop();
 				record.release();
@@ -159,34 +153,33 @@ public class Sonar {
 	private class AudioOutputWorker extends Worker {
 		@Override
 		public void run() {
-			AudioTrack track = new AudioTrack(
-				AudioManager.STREAM_MUSIC, SAMPLERATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, 
-				Math.max(AudioTrack.getMinBufferSize(SAMPLERATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT), _pulse.length * 2), 
-				AudioTrack.MODE_STREAM);
-
+			int count = SAMPLERATE * PULSEINTERVAL / 1000;
+			int position = 0;
 			short[] pulse = Signals.toShort(_pulse);
 			short[] silence = new short[_pulse.length];
 			
-			int maxsamples = SAMPLERATE * PULSEINTERVAL / 1000;
-			int sampleoffset = 0;
-			
+			AudioTrack track = new AudioTrack(
+				AudioManager.STREAM_MUSIC, SAMPLERATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, 
+				Math.max(AudioTrack.getMinBufferSize(SAMPLERATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT), count), 
+				AudioTrack.MODE_STREAM);
+
 			try {
 				track.flush();
 				track.play();
 
 				while (!_stop) {
-					if (sampleoffset < _pulse.length) {
+					if (position < _pulse.length) {
 						// Send the sonar pulse
-						sampleoffset += track.write(pulse, sampleoffset, pulse.length - sampleoffset);
+						position += track.write(pulse, position, pulse.length - position);
 					}
 					else {
 						// Silence for rest of pulse interval
-						sampleoffset += track.write(silence, 0, Math.min(maxsamples - sampleoffset, silence.length));
+						position += track.write(silence, 0, Math.min(count - position, silence.length));
 					}
 					
 					// Prepare for next pulse interval
-					if (sampleoffset >= maxsamples) {
-						sampleoffset = 0;
+					if (position >= count) {
+						position = 0;
 					}
 				}
 			}
