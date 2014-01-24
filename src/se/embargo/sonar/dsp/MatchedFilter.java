@@ -7,8 +7,12 @@ public class MatchedFilter implements ISignalFilter {
 	
 	@Override
 	public void accept(Item item) {
-		//Parallel.forRange(_body, item, 0, Math.min(item.samples.length, item.output.length));
-		_body.run(item, 0, Math.min(item.samples.length, item.output.length));
+		if (item.output.length != item.samples.length - item.operator.length) {
+			item.output = new float[item.samples.length - item.operator.length];
+		}
+		
+		//Parallel.forRange(_body, item, 0, item.output.length);
+		_body.run(item, 0, item.output.length);
 	}
 	
 	private static class FilterBody implements IForBody<Item> {
@@ -20,7 +24,7 @@ public class MatchedFilter implements ISignalFilter {
 			final float maxshort = Short.MAX_VALUE;
 			float accumulator;
 			
-			for (int i = 0, il = samples.length - operator.length; i < il; i++) {
+			for (int i = 0, il = output.length; i < il; i++) {
 				accumulator = 0;
 				for (int j = operator.length - 1; j >= 0; j--) {
 					accumulator += ((float)samples[i + j] / maxshort) * operator[j];
