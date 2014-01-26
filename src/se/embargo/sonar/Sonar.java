@@ -1,10 +1,13 @@
 package se.embargo.sonar;
 
+import java.util.Arrays;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import se.embargo.core.concurrent.Parallel;
 import se.embargo.sonar.dsp.AverageFilter;
@@ -20,8 +23,11 @@ import android.media.AudioManager;
 import android.media.AudioRecord;
 import android.media.AudioTrack;
 import android.media.MediaRecorder;
+import android.util.Log;
 
 public class Sonar {
+	private static final String TAG = "Sonar";
+	
 	private static final int SAMPLERATE = 44100;
 	private static final int PULSEINTERVAL = 80;
 	private static final int PULSEDURATION = 20;
@@ -43,22 +49,20 @@ public class Sonar {
 	/**
 	 * DSP filter to apply to samples
 	 */
-	private final ISignalFilter _filter;
+	private ISignalFilter _filter;
 	
 	/**
 	 * True if stereo recording should be used
 	 */
 	private final boolean _stereo;
 	
+	/**
+	 * One time delay to apply to output audio
+	 */
+	private AtomicInteger _outputDelay = new AtomicInteger(0);
+	
 	public Sonar(Context context, boolean stereo) {
 		_stereo = stereo;
-		
-		if (_stereo) {
-			_filter = new CompositeFilter(new SonogramFilter(_pulse), /*new AverageFilter(), */new FramerateCounter());
-		}
-		else {
-			_filter = new CompositeFilter(new MatchedFilter(_pulse), new AverageFilter(), new FramerateCounter());
-		}
 	}
 	
 	
@@ -77,6 +81,13 @@ public class Sonar {
 	}
 	
 	public void start() {
+		if (_stereo) {
+			_filter = new CompositeFilter(new AudioSync(), new SonogramFilter(_pulse), /*new AverageFilter(), */new FramerateCounter());
+		}
+		else {
+			_filter = new CompositeFilter(new AudioSync(), new MatchedFilter(_pulse), new AverageFilter(), new FramerateCounter());
+		}
+
 		_inputworker = new AudioInputWorker();
 		_inputworker.start();
 		
@@ -202,7 +213,8 @@ public class Sonar {
 			try {
 				track.flush();
 				track.play();
-
+				
+				int duration = resolution;
 				while (!_stop) {
 					if (position < _pulse.length) {
 						// Send the sonar pulse
@@ -210,18 +222,107 @@ public class Sonar {
 					}
 					else {
 						// Silence for rest of pulse interval
-						position += track.write(silence, 0, Math.min(resolution - position, silence.length));
+						position += track.write(silence, 0, Math.min(duration - position, silence.length));
 					}
 					
 					// Prepare for next pulse interval
-					if (position >= resolution) {
+					if (position >= duration) {
 						position = 0;
+						duration = resolution + _outputDelay.getAndSet(0);
 					}
 				}
 			}
 			finally {
 				track.stop();
 				track.release();
+			}
+		}
+	}
+	
+	public class AudioSync implements ISignalFilter, Runnable {
+		private static final int ADJUSTINTERVAL = PULSEINTERVAL * 3, POSITIVEHITS = 3, TOLERANCE = 15, THRESHOLD = 3;
+		
+		private boolean _scheduled = false, _disabled = false;
+		private long _ts = 0;
+		private short[] _samples;
+		private int _maxpos = -1, _hitcount = 0;
+		private ExecutorService _executor = Executors.newCachedThreadPool();
+		
+		@Override
+		public synchronized void accept(Item item) {
+			if (_disabled) {
+				return;
+			}
+			
+			long ts = System.currentTimeMillis();
+			if (_ts == 0) {
+				_ts = ts;
+			}
+
+			// Analyze samples to find pulse offset
+			if (ts - _ts >= ADJUSTINTERVAL && !_scheduled) {
+				if (_samples == null || _samples.length != item.samples.length) {
+					_samples = Arrays.copyOf(item.samples, item.samples.length);
+				}
+				else {
+					System.arraycopy(item.samples, 0, _samples, 0, item.samples.length);
+				}
+				
+				_ts = ts;
+				_scheduled = true;
+				_executor.submit(this);
+			}
+		}
+
+		@Override
+		public void run() {
+			try {
+				final short[] samples = _samples;
+				final float[] operator = _pulse;
+				float maxval = 0, maxshort = Short.MAX_VALUE;
+				int maxpos = 0;
+				int step = _stereo ? 2 : 1;				
+				
+				// Apply convolution to find maximum value
+				for (int i = 0, il = samples.length - operator.length * step; i < il; i += step) {
+					float acc = 0;
+					for (int j = 0, is = i; j < operator.length; j++, is += step) {
+						acc += ((float)samples[is] / maxshort) * operator[j];
+					}
+					
+					if (maxval < Math.abs(acc)) {
+						maxval = Math.abs(acc);
+						maxpos = _stereo ? i / 2 : i;
+					}
+				}
+				
+				synchronized (this) {
+					Log.i(TAG, "Pulse found at offset " + maxpos);
+					int resolution = SAMPLERATE * PULSEINTERVAL / 1000;
+
+					// Check if pulse was found in same position again (otherwise it's noise)
+					if (Math.abs(_maxpos - maxpos) < TOLERANCE) {
+						if (++_hitcount >= POSITIVEHITS) {
+							if (_maxpos < THRESHOLD) {
+								_disabled = true;
+								Log.i(TAG, "Pulse found at offset " + _maxpos + ", disabling further adjustment");
+							}
+							else {
+								_outputDelay.set((resolution - maxpos) % resolution);
+								Log.i(TAG, "Adjusting for pulse at offset " + maxpos);
+							}
+						}
+					}
+					else {
+						_maxpos = maxpos;
+						_hitcount = 0;
+					}
+				}
+			}
+			finally {
+				synchronized (this) {
+					_scheduled = false;
+				}
 			}
 		}
 	}
