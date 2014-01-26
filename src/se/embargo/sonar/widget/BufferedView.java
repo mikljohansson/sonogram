@@ -14,12 +14,12 @@ import android.view.View;
 public abstract class BufferedView extends View {
 	private Bitmap _bitmap;
 	private Canvas _canvas;
-	private Rect _canvasWindow;
+	private volatile Rect _canvasWindow = new Rect(0, 0, 100, 100);
 	private final Paint _bitmapPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
 	private boolean _invalid;
 	
-	private Rect _dataResolution;
-	private Rect _zoomWindow;
+	private volatile Rect _dataResolution = new Rect(_canvasWindow);
+	private volatile Rect _dataWindow = new Rect(_canvasWindow);
 	private float _zoom = 1.0f;
 	private float _zoomx = 0, _zoomy = 0, _zoomw = 0, _zoomh = 0;
 
@@ -47,22 +47,45 @@ public abstract class BufferedView extends View {
 		return _dataResolution;
 	}
 
-	public void setResolution(Rect resolution) {
+	public synchronized void setResolution(Rect resolution) {
 		_dataResolution = new Rect(resolution);
-		_zoomWindow = new Rect(_dataResolution);
-		_zoomx = _zoomWindow.left;
-		_zoomy = _zoomWindow.right;
-		_zoomw = _zoomWindow.width();
-		_zoomh = _zoomWindow.height();
-		setZoom(_zoom);
+		setWindow(new Rect(_dataResolution));
+		_zoomx = _dataWindow.left;
+		_zoomy = _dataWindow.right;
+		_zoomw = _dataWindow.width();
+		_zoomh = _dataWindow.height();
+		_zoom = 1.0f;
 	}
 	
-	public void setZoom(float zoom, float x, float y) {
+	/**
+	 * @note	Must not lock or the audio reader thread will be blocked
+	 */
+	public Rect getWindow() {
+		return _dataWindow;
+	}
+	
+	protected synchronized void setWindow(Rect window) {
+		_dataWindow = window;
+		invalidateCanvas();
+	}
+	
+	/**
+	 * @note	Must not lock or the audio reader thread will be blocked
+	 */
+	public Rect getCanvas() {
+		return _canvasWindow;
+	}
+	
+	protected synchronized void setCanvas(Rect canvas) {
+		_canvasWindow = canvas;
+	}
+	
+	public synchronized void setZoom(float zoom, float x, float y) {
 		float zoomw = Math.min((float)_dataResolution.width() / zoom, _dataResolution.width()),
 			  zoomh = Math.min((float)_dataResolution.height() / zoom, _dataResolution.height());
 		
-		float xadj = (zoomw - _zoomw) * (x - _zoomx) / _zoomWindow.width(),
-		      yadj = (zoomh - _zoomh) * (y - _zoomy) / _zoomWindow.height();
+		float xadj = (zoomw - _zoomw) * (x - _zoomx) / _dataWindow.width(),
+		      yadj = (zoomh - _zoomh) * (y - _zoomy) / _dataWindow.height();
 
 		float zoomx = Math.max(Math.min(_zoomx - xadj + zoomw, _dataResolution.right) - zoomw, _dataResolution.left),
 			  zoomy = Math.max(Math.min(_zoomy - yadj + zoomh, _dataResolution.bottom) - zoomh, _dataResolution.top);
@@ -72,30 +95,28 @@ public abstract class BufferedView extends View {
 		_zoomy = zoomy;
 		_zoomw = zoomw;
 		_zoomh = zoomh;
-		
-		_zoomWindow.left = Math.max((int)zoomx, _dataResolution.left);
-		_zoomWindow.top = Math.max((int)zoomy, _dataResolution.top);
-		_zoomWindow.right = Math.min(_zoomWindow.left + (int)zoomw, _dataResolution.right);
-		_zoomWindow.bottom = Math.min(_zoomWindow.top + (int)zoomh, _dataResolution.bottom);
-		
-		invalidateCanvas();
+
+		setWindow(new Rect(
+			Math.max((int)zoomx, _dataResolution.left),
+			Math.max((int)zoomy, _dataResolution.top),
+			Math.min((int)zoomx + (int)zoomw, _dataResolution.right),
+			Math.min((int)zoomy + (int)zoomh, _dataResolution.bottom)));
 	}
 	
-	public void setZoom(float zoom) {
+	public synchronized void setZoom(float zoom) {
 		setZoom(zoom, _zoomx, _zoomy);
 	}
 	
-	private void setPosition(float x, float y) {
-		int w = _zoomWindow.width(), h = _zoomWindow.height();
+	private synchronized void setPosition(float x, float y) {
+		int w = _dataWindow.width(), h = _dataWindow.height();
 		_zoomx = Math.max(_dataResolution.left, Math.min(x, _dataResolution.right - w));
 		_zoomy = Math.max(_dataResolution.top, Math.min(y, _dataResolution.bottom - h));
 		
-		_zoomWindow.left = (int)_zoomx;
-		_zoomWindow.top = (int)_zoomy;
-		_zoomWindow.right = _zoomWindow.left + w;
-		_zoomWindow.bottom = _zoomWindow.top + h;
-		
-		invalidateCanvas();
+		setWindow(new Rect(
+			(int)_zoomx, 
+			(int)_zoomy,
+			(int)_zoomx + w, 
+			(int)_zoomy + h));
 	}
 	
 	protected synchronized void invalidateCanvas() {
@@ -109,7 +130,7 @@ public abstract class BufferedView extends View {
 	}
 	
 	@Override
-	protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+	protected synchronized void onSizeChanged(int w, int h, int oldw, int oldh) {
 		super.onSizeChanged(w, h, oldw, oldh);
 		
 		if (w > 0 && h > 0) {
@@ -120,7 +141,7 @@ public abstract class BufferedView extends View {
 			
 			_bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.RGB_565);
 			_canvas = new Canvas(_bitmap);
-			_canvasWindow = new Rect(0, 0, w, h);
+			setCanvas(new Rect(0, 0, w, h));
 		}
 	}
 	
@@ -131,7 +152,7 @@ public abstract class BufferedView extends View {
 	    if (_invalid) {
 	    	_invalid = false;
 	    	_canvas.drawColor(Color.BLACK);
-	    	draw(_canvas, _zoomWindow, _canvasWindow);
+	    	draw(_canvas, _dataWindow, _canvasWindow);
 	    }
 	
 	    if (_bitmap != null) {
@@ -149,41 +170,44 @@ public abstract class BufferedView extends View {
 		@Override
 		public boolean onTouch(View v, MotionEvent event) {
 			boolean result = super.onTouchEvent(event);
-			switch (event.getActionMasked()) {
-				case MotionEvent.ACTION_CANCEL:
-					_singleTouch = false;
-					result = true;
-					break;
-
-				case MotionEvent.ACTION_UP:
-					_singleTouch = false;
-					result = true;
-					break;
-
-				case MotionEvent.ACTION_DOWN:
-					_singleTouch = true;
-					_x = event.getX();
-					_y = event.getY();
-					_zx = _zoomx;
-					_zy = _zoomy;
-					result = true;
-					break;
-					
-				case MotionEvent.ACTION_MOVE:
-					float x = event.getX(), y = event.getY();
-					if (_singleTouch) {
-						float xres = (float)_zoomWindow.width() / (float)_canvasWindow.width(),
-							  yres = (float)_zoomWindow.height() / (float)_canvasWindow.height();
-						float zoomx = _zx + (_x - (x - _canvasWindow.left)) * xres, 
-							  zoomy = _zy + (_y - (y - _canvasWindow.top)) * yres;
-						setPosition(zoomx, zoomy);
+			
+			synchronized (BufferedView.this) {
+				switch (event.getActionMasked()) {
+					case MotionEvent.ACTION_CANCEL:
+						_singleTouch = false;
+						result = true;
+						break;
+	
+					case MotionEvent.ACTION_UP:
+						_singleTouch = false;
+						result = true;
+						break;
+	
+					case MotionEvent.ACTION_DOWN:
+						_singleTouch = true;
 						_x = event.getX();
 						_y = event.getY();
 						_zx = _zoomx;
 						_zy = _zoomy;
 						result = true;
-					}
-					break;
+						break;
+						
+					case MotionEvent.ACTION_MOVE:
+						float x = event.getX(), y = event.getY();
+						if (_singleTouch) {
+							float xres = (float)_dataWindow.width() / (float)_canvasWindow.width(),
+								  yres = (float)_dataWindow.height() / (float)_canvasWindow.height();
+							float zoomx = _zx + (_x - (x - _canvasWindow.left)) * xres, 
+								  zoomy = _zy + (_y - (y - _canvasWindow.top)) * yres;
+							setPosition(zoomx, zoomy);
+							_x = event.getX();
+							_y = event.getY();
+							_zx = _zoomx;
+							_zy = _zoomy;
+							result = true;
+						}
+						break;
+				}
 			}
 			
 			return result;
@@ -195,8 +219,8 @@ public abstract class BufferedView extends View {
 		public boolean onScale(ScaleGestureDetector detector) {
 			_singleTouch = false;
 
-			float xres = (float)_zoomWindow.width() / (float)_canvasWindow.width(),
-				  yres = (float)_zoomWindow.height() / (float)_canvasWindow.height();
+			float xres = (float)_dataWindow.width() / (float)_canvasWindow.width(),
+				  yres = (float)_dataWindow.height() / (float)_canvasWindow.height();
 			setZoom(_zoom * detector.getScaleFactor(), 
 				    _zoomx + (detector.getFocusX() - _canvasWindow.left) * xres, 
 				    _zoomy + (detector.getFocusY() - _canvasWindow.top) * yres);

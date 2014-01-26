@@ -53,7 +53,7 @@ public class Signals {
 	 * @param bandwidth		Pulse bandwidth in Hz
 	 * @return				A frequency modulated chirp
 	 */
-	public static float[] createLinearChirp(int samplerate, int duration, float amplitude, float frequency, float bandwidth) {
+	public static float[] createLinearChirp(int samplerate, int duration, float frequency, float bandwidth) {
 		float[] pulse = new float[samplerate * duration / 1000];
 
 		// sin(2 * pi * (f2 - f1) / (2 * d) * ((x/s)^2) + 2 * pi * f1 * (x/s))  *  sin(2 * pi * (1 / d / 2) * (x/s)) ^ 0.25
@@ -64,7 +64,7 @@ public class Signals {
 			taper = 2f * (float)Math.PI * (1f / t / 2f) / samplerate;
 		
 		for (int i = 0; i < pulse.length; i++) {
-			pulse[i] = (float)(Math.sin(step * i * i + step2 * i) * Math.pow(Math.sin(taper * i), 0.25f) * amplitude);
+			pulse[i] = (float)(Math.sin(step * i * i + step2 * i) * Math.pow(Math.sin(taper * i), 0.25f));
 		}
 		
 		return pulse;
@@ -75,10 +75,10 @@ public class Signals {
 	 * @param data	Time series in range [-1, 1] to rebase into [Short.MIN_VALUE, Short.MAX_VALUE] 
 	 * @return		Rebased of time series
 	 */
-	public static short[] toShort(float[] data) {
+	public static short[] toShort(float[] data, float amplitude) {
 		short[] result = new short[data.length];
 		for (int i = 0; i < data.length; i++) {
-			result[i] = (short)(data[i] * Short.MAX_VALUE);
+			result[i] = (short)(data[i] * amplitude * Short.MAX_VALUE);
 		}
 		
 		return result;

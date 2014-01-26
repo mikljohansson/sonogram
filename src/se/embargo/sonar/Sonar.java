@@ -1,6 +1,5 @@
 package se.embargo.sonar;
 
-import java.util.Arrays;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
@@ -13,6 +12,9 @@ import se.embargo.sonar.dsp.CompositeFilter;
 import se.embargo.sonar.dsp.FramerateCounter;
 import se.embargo.sonar.dsp.ISignalFilter;
 import se.embargo.sonar.dsp.MatchedFilter;
+import se.embargo.sonar.dsp.SonogramFilter;
+import android.content.Context;
+import android.graphics.Rect;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioRecord;
@@ -24,32 +26,54 @@ public class Sonar {
 	private static final int PULSEINTERVAL = 80;
 	private static final int PULSEDURATION = 20;
 	
-	private ISonarListener[] _listeners = new ISonarListener[0];
+	private ISonarController _controller;
 	private Worker _inputworker, _outputworker;
 	
 	private static ExecutorService _threadpool = new ThreadPoolExecutor(
 		Parallel.getNumberOfCores(), Parallel.getNumberOfCores(), 0, TimeUnit.MILLISECONDS, 
-		new ArrayBlockingQueue<Runnable>(16, false), new ThreadPoolExecutor.DiscardOldestPolicy());
+		new ArrayBlockingQueue<Runnable>(4, false), new ThreadPoolExecutor.DiscardOldestPolicy());
 	
 	private final Queue<FilterTask> _filterpool = new ArrayBlockingQueue<FilterTask>(Parallel.getNumberOfCores(), false);
 	
 	/**
 	 * Sonar pulse time series.
 	 */
-	private float[] _pulse = Signals.createLinearChirp(SAMPLERATE, PULSEDURATION, 0.5f, (float)SAMPLERATE / 8, (float)SAMPLERATE / 4);
+	private final float[] _pulse = Signals.createLinearChirp(SAMPLERATE, PULSEDURATION, (float)SAMPLERATE / 4, (float)SAMPLERATE / 8);
 	
 	/**
 	 * DSP filter to apply to samples
 	 */
-	private ISignalFilter _filter = new CompositeFilter(new MatchedFilter(), new AverageFilter(), new FramerateCounter());
+	private final ISignalFilter _filter;
 	
-	public int getResolution() {
-		return SAMPLERATE * PULSEINTERVAL / 1000;
+	/**
+	 * True if stereo recording should be used
+	 */
+	private final boolean _stereo;
+	
+	public Sonar(Context context, boolean stereo) {
+		_stereo = stereo;
+		
+		if (_stereo) {
+			_filter = new CompositeFilter(new SonogramFilter(_pulse), /*new AverageFilter(), */new FramerateCounter());
+		}
+		else {
+			_filter = new CompositeFilter(new MatchedFilter(_pulse), new AverageFilter(), new FramerateCounter());
+		}
 	}
 	
-	public void addListener(ISonarListener listener) {
-		_listeners = Arrays.copyOf(_listeners, _listeners.length + 1);
-		_listeners[_listeners.length - 1] = listener;
+	
+	public void setController(ISonarController controller) {
+		_controller = controller;
+
+		if (_stereo) {
+			int resolution = SAMPLERATE * PULSEINTERVAL / 1000;
+			int height = (int)Math.floor(Math.sqrt(resolution * resolution / 2)) - 10;
+			_controller.setSonarResolution(new Rect(0, 0, height * 2, height));
+		}
+		else {
+			int resolution = SAMPLERATE * PULSEINTERVAL / 1000;
+			_controller.setSonarResolution(new Rect(0, 0, resolution, 1));
+		}
 	}
 	
 	public void start() {
@@ -66,25 +90,23 @@ public class Sonar {
 	}
 	
 	private class FilterTask implements Runnable {
-		private ISignalFilter.Item _item;
+		public final ISignalFilter.Item item;
 		
-		public FilterTask(int samples) {
-			_item = new ISignalFilter.Item(SAMPLERATE, _pulse, samples + _pulse.length);
+		public FilterTask(int samplecount) {
+			item = new ISignalFilter.Item(SAMPLERATE, samplecount);
 		}
 		
 		public void init(short[] samples) {
-			_item.init(samples);
+			item.init(samples, _controller.getSonarWindow(), _controller.getSonarCanvas());
 		}
-		
+
 		@Override
 		public void run() {
 			// Apply the filters
-			_filter.accept(_item);
+			_filter.accept(item);
 
-			// Call the listeners
-			for (ISonarListener listener : _listeners) {
-				listener.receive(_item.output);
-			}
+			// Forward the filter output
+			_controller.receive(item);
 
 			// Reuse this task
 			_filterpool.offer(this);
@@ -108,21 +130,35 @@ public class Sonar {
 	private class AudioInputWorker extends Worker {
 		@Override
 		public void run() {
-			int count = SAMPLERATE * PULSEINTERVAL / 1000;
-			int position = 0;
-			short[] samples = new short[count + _pulse.length];
+			int resolution = SAMPLERATE * PULSEINTERVAL / 1000;
+			int samplecount, chunksize;
+			int channel;
+			short[] samples;
+			
+			if (_stereo) {
+				samplecount = (resolution + _pulse.length) * 2;
+				chunksize = resolution * 2;
+				channel = AudioFormat.CHANNEL_IN_STEREO;
+			}
+			else {
+				samplecount = resolution + _pulse.length;
+				chunksize = resolution;
+				channel = AudioFormat.CHANNEL_IN_MONO;
+			}
 			
 			AudioRecord record = new AudioRecord(
-				MediaRecorder.AudioSource.CAMCORDER, SAMPLERATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, 
-				Math.max(AudioTrack.getMinBufferSize(SAMPLERATE, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT), count));
+				MediaRecorder.AudioSource.DEFAULT, SAMPLERATE, channel, AudioFormat.ENCODING_PCM_16BIT, 
+				Math.max(AudioTrack.getMinBufferSize(SAMPLERATE, channel, AudioFormat.ENCODING_PCM_16BIT), samplecount));
 			
 			try {
+				int position = samplecount - chunksize;
 				record.startRecording();
+				samples = new short[samplecount];
 
 				while (!_stop) {
-					// Read complete data chunk into first half of buffer
-					position += record.read(samples, position, count - position);
-					if (position < count) {
+					// Read complete data chunk into last chunksize of buffer
+					position += record.read(samples, position, samplecount - position);
+					if (position < samplecount) {
 						Thread.sleep(PULSEINTERVAL / 10);
 						continue;
 					}
@@ -130,16 +166,16 @@ public class Sonar {
 					// Allocate a new filter task
 					FilterTask task = _filterpool.poll();
 					if (task == null) {
-						task = new FilterTask(count);
+						task = new FilterTask(samplecount);
 					}
 				
 					// Perform the filter processing on the thread pool
 					task.init(samples);
 					_threadpool.submit(task);
 					
-					// Make room for next data chunk
-					System.arraycopy(samples, 0, samples, _pulse.length, count);
-					position = 0;
+					// Save last/newest section of previous buffer as the first part
+					System.arraycopy(samples, chunksize, samples, 0, samplecount - chunksize);
+					position = samplecount - chunksize;
 				}
 			}
 			catch (InterruptedException e) {}
@@ -153,14 +189,14 @@ public class Sonar {
 	private class AudioOutputWorker extends Worker {
 		@Override
 		public void run() {
-			int count = SAMPLERATE * PULSEINTERVAL / 1000;
+			int resolution = SAMPLERATE * PULSEINTERVAL / 1000;
 			int position = 0;
-			short[] pulse = Signals.toShort(_pulse);
+			short[] pulse = Signals.toShort(_pulse, 0.5f);
 			short[] silence = new short[_pulse.length];
 			
 			AudioTrack track = new AudioTrack(
 				AudioManager.STREAM_MUSIC, SAMPLERATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, 
-				Math.max(AudioTrack.getMinBufferSize(SAMPLERATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT), count), 
+				Math.max(AudioTrack.getMinBufferSize(SAMPLERATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT), resolution), 
 				AudioTrack.MODE_STREAM);
 
 			try {
@@ -174,11 +210,11 @@ public class Sonar {
 					}
 					else {
 						// Silence for rest of pulse interval
-						position += track.write(silence, 0, Math.min(count - position, silence.length));
+						position += track.write(silence, 0, Math.min(resolution - position, silence.length));
 					}
 					
 					// Prepare for next pulse interval
-					if (position >= count) {
+					if (position >= resolution) {
 						position = 0;
 					}
 				}

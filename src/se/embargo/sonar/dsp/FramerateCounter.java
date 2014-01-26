@@ -14,7 +14,7 @@ public class FramerateCounter implements ISignalFilter {
 		}
 		
 		// Calculate the framerate
-		if (++_framestat >= 25) {
+		if (++_framestat >= 10) {
 			long ts = System.nanoTime();
 			Log.d(TAG, "Framerate: " + ((double)_framestat / (((double)ts - (double)_laststat) / 1000000000d)));
 			

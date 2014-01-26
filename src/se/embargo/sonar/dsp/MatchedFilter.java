@@ -1,36 +1,56 @@
 package se.embargo.sonar.dsp;
 
 import se.embargo.core.concurrent.IForBody;
+import se.embargo.core.concurrent.Parallel;
+import android.annotation.SuppressLint;
+import android.util.FloatMath;
 
 public class MatchedFilter implements ISignalFilter {
-	private FilterBody _body = new FilterBody();
+	private final float[] _operator;
+	private final FilterBody _body = new FilterBody();
 	
+	public MatchedFilter(float[] operator) {
+		_operator = operator;
+	}
+
 	@Override
 	public void accept(Item item) {
-		if (item.output.length != item.samples.length - item.operator.length) {
-			item.output = new float[item.samples.length - item.operator.length];
+		if (item.output.length != item.canvas.width()) {
+			item.output = new float[item.canvas.width()];
 		}
 		
-		//Parallel.forRange(_body, item, 0, item.output.length);
-		_body.run(item, 0, item.output.length);
+		item.maxvalue = 0;
+		
+		// Apply filter in parallel over output columns
+		Parallel.forRange(_body, item, 0, item.output.length);
 	}
 	
-	private static class FilterBody implements IForBody<Item> {
+	private class FilterBody implements IForBody<Item> {
 		@Override
+		@SuppressLint("FloatMath")
 		public void run(Item item, int it, int last) {
-			final float[] operator = item.operator;
+			final float[] operator = _operator;
 			final short[] samples = item.samples;
 			final float[] output = item.output;
 			final float maxshort = Short.MAX_VALUE;
-			float accumulator;
+			final float samplestep = (float)item.window.width() / (float)item.output.length;
+			float maxvalue = 0;
 			
-			for (int i = 0, il = output.length; i < il; i++) {
-				accumulator = 0;
-				for (int j = operator.length - 1; j >= 0; j--) {
-					accumulator += ((float)samples[i + j] / maxshort) * operator[j];
+			for (float si = (float)item.window.left + samplestep * it; it < last; it++, si += samplestep) {
+				float r2 = si - FloatMath.floor(si), r1 = 1.0f - r2;
+				float acc = 0;
+				
+				for (int j = 0, jl = operator.length, vi = (int)si; j < jl; j++, vi++) {
+					float sample = (float)samples[vi * 2] * r1 + (float)samples[vi * 2 + 2] * r2;
+					acc += (sample / maxshort) * operator[j];
 				}
 				
-				output[i] = accumulator;
+				output[it] = acc;
+				maxvalue = Math.max(maxvalue, acc);
+			}
+			
+			synchronized (item) {
+				item.maxvalue = Math.max(item.maxvalue, maxvalue);
 			}
 		}
 	}

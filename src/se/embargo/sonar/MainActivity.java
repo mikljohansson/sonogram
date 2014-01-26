@@ -1,6 +1,7 @@
 package se.embargo.sonar;
 
 import se.embargo.sonar.widget.HistogramView;
+import se.embargo.sonar.widget.SonogramView;
 import android.os.Bundle;
 
 import com.actionbarsherlock.app.SherlockFragmentActivity;
@@ -11,6 +12,7 @@ import com.actionbarsherlock.view.MenuItem;
 public class MainActivity extends SherlockFragmentActivity {
 	private static final String TAG = "MainActivity";
 	
+	private SonogramView _sonogramView;
 	private HistogramView _histogramView;
 	private Sonar _sonar;
 	
@@ -19,13 +21,14 @@ public class MainActivity extends SherlockFragmentActivity {
 		super.onCreate(state);
 
 		setContentView(R.layout.main_activity);
-		_histogramView = (HistogramView)findViewById(R.id.histogram);
+		_sonogramView = (SonogramView)findViewById(R.id.sonogram);
+		//_histogramView = (HistogramView)findViewById(R.id.histogram);
 		
-		_sonar = new Sonar();
-		_sonar.addListener(_histogramView);
+		_sonar = new Sonar(this, true);
+		_sonar.setController(_sonogramView);
+		//_sonar.setController(_histogramView);
 		
-		_histogramView.setResolution(_sonar.getResolution());
-		_histogramView.setZoom(3);
+		//_histogramView.setZoom(3);
 	}
 	
 	@Override

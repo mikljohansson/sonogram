@@ -4,8 +4,8 @@
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
 	android:orientation="vertical">
-	<se.embargo.sonar.widget.HistogramView
-	    android:id="@+id/histogram" 
+	<se.embargo.sonar.widget.SonogramView
+	    android:id="@+id/sonogram" 
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"/>
 </LinearLayout>
