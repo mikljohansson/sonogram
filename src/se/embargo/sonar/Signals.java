@@ -75,15 +75,24 @@ public class Signals {
 	 * @param data	Time series in range [-1, 1] to rebase into [Short.MIN_VALUE, Short.MAX_VALUE] 
 	 * @return		Rebased of time series
 	 */
-	public static short[] toShort(float[] data, float amplitude) {
-		short[] result = new short[data.length];
-		for (int i = 0; i < data.length; i++) {
-			result[i] = (short)(data[i] * amplitude * Short.MAX_VALUE);
+	public static short[] toShort(float[] data, float amplitude, int stride) {
+		short[] result = new short[data.length * stride];
+		for (int i = 0, j = 0; i < data.length; i++, j += stride) {
+			result[j] = (short)(data[i] * amplitude * Short.MAX_VALUE);
 		}
 		
 		return result;
 	}
 
+	/**
+	 * Rebases an time series to the short data type
+	 * @param data	Time series in range [-1, 1] to rebase into [Short.MIN_VALUE, Short.MAX_VALUE] 
+	 * @return		Rebased of time series
+	 */
+	public static short[] toShort(float[] data, float amplitude) {
+		return toShort(data, amplitude, 1);
+	}
+	
 	/**
 	 * Reverses a time series
 	 * @param data	Time series to reverse

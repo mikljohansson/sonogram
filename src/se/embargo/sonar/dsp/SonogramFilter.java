@@ -48,8 +48,8 @@ public class SonogramFilter implements ISignalFilter {
 			final float[] output = item.output;
 			float maxvalue = 0;
 			
-			// Divisor to get samples into [-1.0, 1.0] range and average samples from the two channels
-			final float divisor = (float)Short.MAX_VALUE * 2;
+			// Divisor to get samples into [-1.0, 1.0] range
+			final float divisor = (float)Short.MAX_VALUE;
 			
 			// Number of samples per pixel on x/y axes
 			final float xstep = (float)item.window.width() / (float)item.canvas.width(),
@@ -78,12 +78,12 @@ public class SonogramFilter implements ISignalFilter {
 					final float hb1 = FloatMath.sqrt(xsb * xsb + ysqr);
 					final float rb2 = hb1 - (int)ha1, rb1 = 1.0f - rb2;
 
-					// Convolve the A/B channels taking the average for each sample
+					// Convolve the A/B channels and the operator
 					float acc = 0;
 					for (int j = 0, jl = operator.length, sai = (int)ha1 * 2, sbi = (int)hb1 * 2 + 1; j < jl; j++, sai += 2, sbi += 2) {
 						float asample = (float)samples[sai] * ra1 + (float)samples[sai + 2] * ra2;
 						float bsample = (float)samples[sbi] * rb1 + (float)samples[sbi + 2] * rb2;
-						acc += ((asample + bsample) / divisor) * operator[j];
+						acc += (asample / divisor) * (bsample / divisor) * operator[j];
 					}
 					
 					for (int sy = oi, syl = oi + xlast * STEP; sy < syl; sy += xlast) {

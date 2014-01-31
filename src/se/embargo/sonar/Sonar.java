@@ -15,7 +15,6 @@ import se.embargo.sonar.dsp.CompositeFilter;
 import se.embargo.sonar.dsp.FramerateCounter;
 import se.embargo.sonar.dsp.ISignalFilter;
 import se.embargo.sonar.dsp.MatchedFilter;
-import se.embargo.sonar.dsp.SonogramFilter;
 import android.content.Context;
 import android.graphics.Rect;
 import android.media.AudioFormat;
@@ -29,8 +28,16 @@ public class Sonar {
 	private static final String TAG = "Sonar";
 	
 	private static final int SAMPLERATE = 44100;
-	private static final int PULSEINTERVAL = 80;
+	private static final int PULSEINTERVAL = 60;
 	private static final int PULSEDURATION = 20;
+	
+	public static final int OPERATOR_LENGTH = SAMPLERATE * PULSEDURATION / 1000;
+	public static final int SAMPLES_LENGTH = SAMPLERATE * PULSEINTERVAL / 1000;
+
+	/**
+	 * Sonar pulse time series.
+	 */
+	public static final float[] OPERATOR = Signals.createLinearChirp(SAMPLERATE, PULSEDURATION, (float)SAMPLERATE / 4, (float)SAMPLERATE / 8);
 	
 	private ISonarController _controller;
 	private Worker _inputworker, _outputworker;
@@ -44,7 +51,7 @@ public class Sonar {
 	/**
 	 * Sonar pulse time series.
 	 */
-	private final float[] _pulse = Signals.createLinearChirp(SAMPLERATE, PULSEDURATION, (float)SAMPLERATE / 4, (float)SAMPLERATE / 8);
+	private final float[] _pulse = OPERATOR;
 	
 	/**
 	 * DSP filter to apply to samples
@@ -82,7 +89,8 @@ public class Sonar {
 	
 	public void start() {
 		if (_stereo) {
-			_filter = new CompositeFilter(new AudioSync(), new SonogramFilter(_pulse), /*new AverageFilter(), */new FramerateCounter());
+			_filter = new CompositeFilter(new AudioSync());
+			//_filter = new CompositeFilter(new AudioSync(), new SonogramFilter(_pulse), /*new AverageFilter(), */new FramerateCounter());
 		}
 		else {
 			_filter = new CompositeFilter(new AudioSync(), new MatchedFilter(_pulse), new AverageFilter(), new FramerateCounter());
@@ -92,7 +100,7 @@ public class Sonar {
 		_inputworker.start();
 		
 		_outputworker = new AudioOutputWorker();
-		_outputworker.start();
+		//_outputworker.start();
 	}
 	
 	public void stop() {
