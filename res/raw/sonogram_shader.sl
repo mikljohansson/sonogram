@@ -11,12 +11,16 @@ const int samplecount = samplerate * interval / 1000;
 const int operatorcount = samplerate * pulselength / 1000;
 const float foperatorcount = float(operatorcount);
 
-const float samplestep = 1.0 / float(samplecount);
-const float operatorstep = 1.0 / foperatorcount;
-const float operatorstart = operatorstep / 2.0;
+const vec2 samplestep = vec2(1.0 / float(samplecount), 0.0);
+const vec2 operatorstep = vec2(1.0 / foperatorcount, 0.0);
+const vec2 operatorstart = vec2(operatorstep.x / 2.0, 0.0);
 
 const float micoffset = baseline / speed / 2.0;
-const vec4 sampleadjust = vec4(0.5, 0.5, 0.5, 0.5);
+const vec2 micoffset0 = vec2(micoffset, -0.5);
+const vec2 micoffset1 = vec2(-micoffset, -0.5);
+
+const vec4 samplemul = vec4(0.00390625, 1.0, 0.00390625, 1.0);
+const vec4 sampleadd = vec4(0.5, 0.5, 0.5, 0.5) * samplemul;
 
 uniform sampler2D operator;
 uniform sampler2D samples;
@@ -25,31 +29,30 @@ varying vec2 vTextureCoord;
 
 void main() {
 	// Calculate the distance from this pixel to each of the microphones
-	vec2 pos0 = vec2(length(vec2(vTextureCoord.x + micoffset, vTextureCoord.y)), 0.0);
-	vec2 pos1 = vec2(length(vec2(vTextureCoord.x - micoffset, vTextureCoord.y)), 0.0);
-	vec2 opos = vec2(operatorstart, 0.0);
+	vec2 pos0 = vec2(length(vTextureCoord + micoffset0), 0.0);
+	vec2 pos1 = vec2(length(vTextureCoord + micoffset1), 0.0);
+	vec2 opos = operatorstart;
 	float acc = 0.0;
 	
 	for (int i = 0; i < operatorcount; i++) {
 		// Sample the operator
-		vec4 osample = texture2D(operator, opos);
+		vec4 osample = texture2D(operator, opos) * samplemul - sampleadd;
 	
 		// Sample the channels
-		vec4 sample0 = texture2D(samples, pos0) - sampleadjust;
-		vec4 sample1 = texture2D(samples, pos1) - sampleadjust;
+		vec4 sample0 = texture2D(samples, pos0) * samplemul - sampleadd;
+		vec4 sample1 = texture2D(samples, pos1) * samplemul - sampleadd;
 		
 		// Accumulate these samples
-		// TODO: byte order (swap order of bytes)
-		//acc += (sample0[1] + sample0[0] / 256.0) * (sample1[3] + sample1[2] / 256.0) * (osample[1] + osample[0] / 256.0);
-		acc += (sample0[0] + sample0[1] / 256.0) * (sample1[2] + sample1[3] / 256.0) * (osample[0] + osample[1] / 256.0);
+		acc += (sample0[1] + sample0[0]) * (sample1[3] + sample1[2]) * (osample[1] + osample[0]);
 		
 		// Step to next sample positions
-		opos.x += operatorstep;
-		pos0.x += samplestep;
-		pos1.x += samplestep;
+		opos += operatorstep;
+		pos0 += samplestep;
+		pos1 += samplestep;
 	}
 	
 	// Keep the value in [0.0, 1.0]
-	acc /= foperatorcount;
+	//acc /= foperatorcount;
+	acc += 0.5;
 	gl_FragColor = vec4(acc, acc, acc, 1.0);
 }

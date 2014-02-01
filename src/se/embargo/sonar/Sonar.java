@@ -100,7 +100,7 @@ public class Sonar {
 		_inputworker.start();
 		
 		_outputworker = new AudioOutputWorker();
-		//_outputworker.start();
+		_outputworker.start();
 	}
 	
 	public void stop() {
