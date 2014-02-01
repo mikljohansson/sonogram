@@ -4,7 +4,6 @@ import se.embargo.sonar.shader.SonogramSurface;
 import se.embargo.sonar.widget.HistogramView;
 import se.embargo.sonar.widget.SonogramView;
 import android.content.pm.ActivityInfo;
-import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
 import android.view.Window;
@@ -34,29 +33,37 @@ public class MainActivity extends SherlockFragmentActivity {
 		// Force switch to landscape orientation
 		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 		
-		setContentView(R.layout.main_activity);
-		_sonogramSurface = (SonogramSurface)findViewById(R.id.sonogram);
-		//_sonogramView = (SonogramView)findViewById(R.id.sonogram);
-		//_histogramView = (HistogramView)findViewById(R.id.histogram);
+		setContentView(R.layout.shader_sonogram);
+		_sonogramSurface = (SonogramSurface)findViewById(R.id.sonogram_surface);
+		_sonogramView = (SonogramView)findViewById(R.id.sonogram);
+		_histogramView = (HistogramView)findViewById(R.id.histogram);
 		
-		_sonar = new Sonar(this, true);
-		_sonar.setController(_sonogramSurface);
-		//_sonar.setController(_sonogramView);
-		//_sonar.setController(_histogramView);
 		
-		//_histogramView.setZoom(3);
-		
-		// Scale the surface to avoid rendering the full resolution
-		DisplayMetrics dm = new DisplayMetrics();
-		getWindowManager().getDefaultDisplay().getMetrics(dm);
-		
-		float scale = 0.2f;
-		int width = dm.widthPixels, height = (int) dm.heightPixels;
-		int scaledwidth = (int)(width * scale);
-		int scaledheight = (int)(height * scale);
+		if (_sonogramSurface != null) {
+			_sonar = new Sonar(this, Sonar.FilterType.SONOGRAM_SHADER);
+			_sonar.setController(_sonogramSurface);
+			
+			// Scale the surface to avoid rendering the full resolution
+			DisplayMetrics dm = new DisplayMetrics();
+			getWindowManager().getDefaultDisplay().getMetrics(dm);
+			
+			float scale = 0.2f;
+			int width = dm.widthPixels, height = (int) dm.heightPixels;
+			int scaledwidth = (int)(width * scale);
+			int scaledheight = (int)(height * scale);
 
-		if (scaledwidth != width || scaledheight != height) {
-			_sonogramSurface.getHolder().setFixedSize(scaledwidth, scaledheight);		
+			if (scaledwidth != width || scaledheight != height) {
+				_sonogramSurface.getHolder().setFixedSize(scaledwidth, scaledheight);		
+			}
+		}
+		else if (_sonogramView != null) {
+			_sonar = new Sonar(this, Sonar.FilterType.SONOGRAM);
+			_sonar.setController(_sonogramView);
+		}
+		else if (_histogramView != null) {
+			_sonar = new Sonar(this, Sonar.FilterType.HISTOGRAM);
+			_sonar.setController(_histogramView);
+			//_histogramView.setZoom(3);
 		}
 	}
 	

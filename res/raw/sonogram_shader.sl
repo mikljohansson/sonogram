@@ -20,33 +20,27 @@ const vec2 micoffset0 = vec2(micoffset, -0.5);
 const vec2 micoffset1 = vec2(-micoffset, -0.5);
 
 const vec4 samplemul = vec4(0.00390625, 1.0, 0.00390625, 1.0);
-const vec4 sampleadd = vec4(0.5, 0.5, 0.5, 0.5) * samplemul;
+const vec4 sampleadd = vec4(-0.5, -0.5, -0.5, -0.5) * samplemul;
 
-uniform sampler2D operator;
 uniform sampler2D samples;
+uniform float operator[operatorcount];
 
 varying vec2 vTextureCoord;
 
 void main() {
 	// Calculate the distance from this pixel to each of the microphones
-	vec2 pos0 = vec2(length(vTextureCoord + micoffset0), 0.0);
-	vec2 pos1 = vec2(length(vTextureCoord + micoffset1), 0.0);
-	vec2 opos = operatorstart;
+	vec2 pos0 = vec2(length(vTextureCoord + micoffset0), 0.5);
+	vec2 pos1 = vec2(length(vTextureCoord + micoffset1), 0.5);
 	float acc = 0.0;
 	
 	for (int i = 0; i < operatorcount; i++) {
-		// Sample the operator
-		vec4 osample = texture2D(operator, opos) * samplemul - sampleadd;
-	
 		// Sample the channels
-		vec4 sample0 = texture2D(samples, pos0) * samplemul - sampleadd;
-		vec4 sample1 = texture2D(samples, pos1) * samplemul - sampleadd;
+		vec4 sample = vec4(texture2D(samples, pos0).xy, texture2D(samples, pos1).zw) * samplemul + sampleadd;
 		
 		// Accumulate these samples
-		acc += (sample0[1] + sample0[0]) * (sample1[3] + sample1[2]) * (osample[1] + osample[0]);
+		acc += (sample[0] + sample[1]) * (sample[2] + sample[3]) * operator[i];
 		
 		// Step to next sample positions
-		opos += operatorstep;
 		pos0 += samplestep;
 		pos1 += samplestep;
 	}

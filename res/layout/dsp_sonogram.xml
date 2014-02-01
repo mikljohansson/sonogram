@@ -4,7 +4,7 @@
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
 	android:orientation="vertical">
-	<se.embargo.sonar.shader.SonogramSurface
+	<se.embargo.sonar.widget.SonogramView
 	    android:id="@+id/sonogram" 
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"/>

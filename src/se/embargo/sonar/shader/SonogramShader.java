@@ -1,6 +1,7 @@
 package se.embargo.sonar.shader;
 
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 
 import se.embargo.core.graphic.ShaderProgram;
 import se.embargo.core.graphic.Shaders;
@@ -15,23 +16,36 @@ public class SonogramShader {
 	private static final String TAG = "SonogramShader";
 	
     private final ShaderProgram _program;
-    private final int _operatorTexture, _samplesTexture;
-    private final int _operatorTextureLocation, _samplesTextureLocation;
+    private final int /*_operatorTexture, */_samplesTexture;
+    private final int _operatorLocation, _samplesLocation;
 
 	public SonogramShader(ShaderProgram program) {
 		_program = program;
-		_operatorTextureLocation = _program.getUniformLocation("operator");
-		_samplesTextureLocation = _program.getUniformLocation("samples");
+		_samplesLocation = _program.getUniformLocation("samples");
+		_operatorLocation = _program.getUniformLocation("operator");
 		
         // Create the external texture which the camera preview is written to
-		int[] textures = new int[2];
+		int[] textures = new int[1];
         GLES20.glGenTextures(textures.length, textures, 0);
 
-        _operatorTexture = textures[0];
-        _samplesTexture = textures[1];
+        _samplesTexture = textures[0];
+        //_operatorTexture = textures[1];
         
-        // Setup the operator texture
+        // Setup the samples texture
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+        Shaders.checkGlError("glActiveTexture");
+
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, _samplesTexture);
+        Shaders.checkGlError("glBindTexture");
+
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+        
+        // Setup the operator
+        /*
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
         Shaders.checkGlError("glActiveTexture");
         
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, _operatorTexture);
@@ -53,31 +67,14 @@ public class SonogramShader {
         	buffer.array().length / 4, 1, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, 
         	buffer.position(0));
         Shaders.checkGlError("glTexImage2D");
-
-        // Setup the channel0 texture
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
-        Shaders.checkGlError("glActiveTexture");
-
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, _samplesTexture);
-        Shaders.checkGlError("glBindTexture");
-
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+        */
 	}
 	
 	public void draw(ByteBuffer samples) {
-        // Bind the operator texture
+        // Bind the samples texture
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, _operatorTexture);
-        GLES20.glUniform1i(_operatorTextureLocation, 0);
-        Shaders.checkGlError("glBindTexture");
-
-        // Bind the channel0 texture
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, _samplesTexture);
-        GLES20.glUniform1i(_samplesTextureLocation, 1);
+        GLES20.glUniform1i(_samplesLocation, 0);
         Shaders.checkGlError("glBindTexture");
 
         GLES20.glPixelStorei(GLES20.GL_UNPACK_ALIGNMENT, 1);
@@ -88,5 +85,15 @@ public class SonogramShader {
         	samples.array().length / 4, 1, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, 
         	samples.position(0));
         Shaders.checkGlError("glTexImage2D");
+
+        // Bind the operator
+        GLES20.glUniform1fv(_operatorLocation, Sonar.OPERATOR.length, Sonar.OPERATOR, 0);
+        Shaders.checkGlError("glUniform1fv");
+        /*
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE1);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, _operatorTexture);
+        GLES20.glUniform1i(_operatorTextureLocation, 1);
+        Shaders.checkGlError("glBindTexture");
+        */
 	}
 }

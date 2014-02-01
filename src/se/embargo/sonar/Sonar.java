@@ -15,6 +15,7 @@ import se.embargo.sonar.dsp.CompositeFilter;
 import se.embargo.sonar.dsp.FramerateCounter;
 import se.embargo.sonar.dsp.ISignalFilter;
 import se.embargo.sonar.dsp.MatchedFilter;
+import se.embargo.sonar.dsp.SonogramFilter;
 import android.content.Context;
 import android.graphics.Rect;
 import android.media.AudioFormat;
@@ -61,39 +62,53 @@ public class Sonar {
 	/**
 	 * True if stereo recording should be used
 	 */
-	private final boolean _stereo;
+	private final FilterType _type;
 	
 	/**
 	 * One time delay to apply to output audio
 	 */
 	private AtomicInteger _outputDelay = new AtomicInteger(0);
 	
-	public Sonar(Context context, boolean stereo) {
-		_stereo = stereo;
+	public enum FilterType { HISTOGRAM, SONOGRAM, SONOGRAM_SHADER };
+	
+	public Sonar(Context context, FilterType type) {
+		_type = type;
 	}
 	
 	
 	public void setController(ISonarController controller) {
 		_controller = controller;
 
-		if (_stereo) {
-			int resolution = SAMPLERATE * PULSEINTERVAL / 1000;
-			int height = (int)Math.floor(Math.sqrt(resolution * resolution / 2)) - 10;
-			_controller.setSonarResolution(new Rect(0, 0, height * 2, height));
-		}
-		else {
-			int resolution = SAMPLERATE * PULSEINTERVAL / 1000;
-			_controller.setSonarResolution(new Rect(0, 0, resolution, 1));
+		switch (_type) {
+			case HISTOGRAM: {
+				int resolution = SAMPLERATE * PULSEINTERVAL / 1000;
+				_controller.setSonarResolution(new Rect(0, 0, resolution, 1));
+				break;
+			}
+
+			case SONOGRAM:
+			case SONOGRAM_SHADER: {
+				int resolution = SAMPLERATE * PULSEINTERVAL / 1000;
+				int height = (int)Math.floor(Math.sqrt(resolution * resolution / 2)) - 10;
+				_controller.setSonarResolution(new Rect(0, 0, height * 2, height));
+				break;
+			}
 		}
 	}
 	
 	public void start() {
-		if (_stereo) {
-			_filter = new CompositeFilter(new AudioSync());
-			//_filter = new CompositeFilter(new AudioSync(), new SonogramFilter(_pulse), /*new AverageFilter(), */new FramerateCounter());
-		}
-		else {
-			_filter = new CompositeFilter(new AudioSync(), new MatchedFilter(_pulse), new AverageFilter(), new FramerateCounter());
+		switch (_type) {
+			case HISTOGRAM:
+				_filter = new CompositeFilter(new AudioSync(), new MatchedFilter(_pulse), new AverageFilter(), new FramerateCounter());
+				break;
+
+			case SONOGRAM:
+				_filter = new CompositeFilter(new AudioSync(), new SonogramFilter(_pulse), /*new AverageFilter(), */new FramerateCounter());
+				break;
+
+			case SONOGRAM_SHADER:
+				_filter = new CompositeFilter(new AudioSync());
+				break;
 		}
 
 		_inputworker = new AudioInputWorker();
@@ -154,7 +169,7 @@ public class Sonar {
 			int channel;
 			short[] samples;
 			
-			if (_stereo) {
+			if (_type != FilterType.HISTOGRAM) {
 				samplecount = (resolution + _pulse.length) * 2;
 				chunksize = resolution * 2;
 				channel = AudioFormat.CHANNEL_IN_STEREO;
@@ -289,7 +304,7 @@ public class Sonar {
 				final float[] operator = _pulse;
 				float maxval = 0, maxshort = Short.MAX_VALUE;
 				int maxpos = 0;
-				int step = _stereo ? 2 : 1;				
+				int step = _type != FilterType.HISTOGRAM ? 2 : 1;				
 				
 				// Apply convolution to find maximum value
 				for (int i = 0, il = samples.length - operator.length * step; i < il; i += step) {
@@ -300,7 +315,7 @@ public class Sonar {
 					
 					if (maxval < Math.abs(acc)) {
 						maxval = Math.abs(acc);
-						maxpos = _stereo ? i / 2 : i;
+						maxpos = _type != FilterType.HISTOGRAM ? i / 2 : i;
 					}
 				}
 				
