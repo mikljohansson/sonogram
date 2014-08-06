@@ -7,7 +7,7 @@ import android.graphics.Rect;
 import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
 
-public class SonogramSurface extends GLSurfaceView implements ISonarController {
+public class SonogramSurface extends GLSurfaceView implements ISonarController, ISignalFilter {
 	private final PreviewRenderer _renderer;
 	private Rect _resolution;
 
@@ -39,7 +39,7 @@ public class SonogramSurface extends GLSurfaceView implements ISonarController {
 	}
 
 	@Override
-	public void receive(ISignalFilter.Item item) {
+	public void accept(ISignalFilter.Item item) {
 		_renderer.receive(item);
 	}
 }

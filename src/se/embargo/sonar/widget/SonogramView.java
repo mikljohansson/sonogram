@@ -4,7 +4,6 @@ import se.embargo.core.concurrent.IForBody;
 import se.embargo.core.concurrent.Parallel;
 import se.embargo.sonar.ISonarController;
 import se.embargo.sonar.dsp.ISignalFilter;
-import se.embargo.sonar.dsp.ISignalFilter.Item;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -12,7 +11,7 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.util.AttributeSet;
 
-public class SonogramView extends BufferedView implements ISonarController {
+public class SonogramView extends BufferedView implements ISonarController, ISignalFilter {
 	private final Paint _outline;
 	private volatile int[] _pixels;
 
@@ -59,7 +58,7 @@ public class SonogramView extends BufferedView implements ISonarController {
 	}
 	
 	@Override
-	public void receive(ISignalFilter.Item item) {
+	public void accept(ISignalFilter.Item item) {
 		// Dirty access to pixel array
 		int[] pixels = _pixels;		
 		Parallel.forRange(new DrawSonogram(pixels), item, 0, Math.min(pixels.length, item.output.length));

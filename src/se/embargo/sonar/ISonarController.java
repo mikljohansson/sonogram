@@ -1,6 +1,5 @@
 package se.embargo.sonar;
 
-import se.embargo.sonar.dsp.ISignalFilter;
 import android.graphics.Rect;
 
 public interface ISonarController {
@@ -15,6 +14,4 @@ public interface ISonarController {
 	 * @note	Must not lock or the audio reader thread will be blocked
 	 */
 	Rect getSonarCanvas();
-	
-	void receive(ISignalFilter.Item item);
 }

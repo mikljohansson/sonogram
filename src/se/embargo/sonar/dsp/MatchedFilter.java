@@ -1,16 +1,24 @@
 package se.embargo.sonar.dsp;
 
+import java.util.Arrays;
+
 import se.embargo.core.concurrent.IForBody;
 import se.embargo.core.concurrent.Parallel;
 import android.annotation.SuppressLint;
-import android.util.FloatMath;
 
 public class MatchedFilter implements ISignalFilter {
 	private final float[] _operator;
+	private final int _step, _offset;
 	private final FilterBody _body = new FilterBody();
 	
-	public MatchedFilter(float[] operator) {
+	public MatchedFilter(float[] operator, int step, int offset) {
 		_operator = operator;
+		_step = step;
+		_offset = offset;
+	}
+
+	public MatchedFilter(float[] operator) {
+		this(operator, 1, 0);
 	}
 
 	@Override
@@ -19,6 +27,7 @@ public class MatchedFilter implements ISignalFilter {
 			item.output = new float[item.canvas.width()];
 		}
 		
+		Arrays.fill(item.output, 0);
 		item.maxvalue = 0;
 		
 		// Apply filter in parallel over output columns
@@ -33,20 +42,23 @@ public class MatchedFilter implements ISignalFilter {
 			final short[] samples = item.samples;
 			final float[] output = item.output;
 			final float maxshort = Short.MAX_VALUE;
-			final float samplestep = (float)item.window.width() / (float)item.output.length;
+			final float sampleratio = (float)item.window.width() / (float)item.output.length;
+			final float samplestep = Math.min(sampleratio, 1.0f), 
+						outputstep = Math.max((float)item.window.width() / (float)item.output.length, 1.0f);
 			float maxvalue = 0;
 			
-			for (float si = (float)item.window.left + samplestep * it; it < last; it++, si += samplestep) {
-				float r2 = si - FloatMath.floor(si), r1 = 1.0f - r2;
+			for (float si = (float)item.window.left + sampleratio * it, oi = it; it < last; si += samplestep, oi += outputstep, it = (int)oi) {
+				//float r2 = si - FloatMath.floor(si), r1 = 1.0f - r2;
 				float acc = 0;
 				
-				for (int j = 0, jl = operator.length, vi = (int)si; j < jl; j++, vi++) {
-					float sample = (float)samples[vi * 2] * r1 + (float)samples[vi * 2 + 2] * r2;
+				for (int j = 0, jl = operator.length, vi = (int)si * _step + _offset; j < jl; j++, vi += _step) {
+					//float sample = (float)samples[vi] * r1 + (float)samples[vi + _step] * r2;
+					float sample = (float)samples[vi];
 					acc += (sample / maxshort) * operator[j];
 				}
 				
-				output[it] = acc;
-				maxvalue = Math.max(maxvalue, acc);
+				output[it] += Math.abs(acc);
+				maxvalue = Math.max(maxvalue, output[it]);
 			}
 			
 			synchronized (item) {

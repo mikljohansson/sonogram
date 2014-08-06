@@ -9,7 +9,7 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.util.AttributeSet;
 
-public class HistogramView extends BufferedView implements ISonarController {
+public class HistogramView extends BufferedView implements ISonarController, ISignalFilter {
 	private final Paint _outline;
 	private float[] _values;
 	private float _maxvalue;
@@ -57,7 +57,7 @@ public class HistogramView extends BufferedView implements ISonarController {
 	}
 	
 	@Override
-	public synchronized void receive(ISignalFilter.Item item) {
+	public synchronized void accept(ISignalFilter.Item item) {
 		System.arraycopy(item.output, 0, _values, 0, item.output.length);
 		_maxvalue = item.maxvalue;
 		postInvalidateCanvas();

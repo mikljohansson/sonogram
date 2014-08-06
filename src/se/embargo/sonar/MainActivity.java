@@ -1,5 +1,9 @@
 package se.embargo.sonar;
 
+import se.embargo.sonar.dsp.AverageFilter;
+import se.embargo.sonar.dsp.CompositeFilter;
+import se.embargo.sonar.dsp.MatchedFilter;
+import se.embargo.sonar.dsp.SonogramFilter;
 import se.embargo.sonar.shader.SonogramSurface;
 import se.embargo.sonar.widget.HistogramView;
 import se.embargo.sonar.widget.SonogramView;
@@ -15,39 +19,42 @@ import com.actionbarsherlock.view.MenuInflater;
 import com.actionbarsherlock.view.MenuItem;
 
 public class MainActivity extends SherlockFragmentActivity {
-	private static final String TAG = "MainActivity";
-	
 	private SonogramSurface _sonogramSurface;
 	private SonogramView _sonogramView;
 	private HistogramView _histogramView;
+	private HistogramView _histogramView2;
 	private Sonar _sonar;
 	
 	@Override
 	public void onCreate(Bundle state) {
 		super.onCreate(state);
 
+		// Keep screen on while this activity is focused 
+		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
 		// Switch to full screen
 		requestWindowFeature(Window.FEATURE_NO_TITLE);
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
 		
 		// Force switch to landscape orientation
-		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 		
 		setContentView(R.layout.shader_sonogram);
 		_sonogramSurface = (SonogramSurface)findViewById(R.id.sonogram_surface);
 		_sonogramView = (SonogramView)findViewById(R.id.sonogram);
 		_histogramView = (HistogramView)findViewById(R.id.histogram);
-		
+		_histogramView2 = (HistogramView)findViewById(R.id.histogram2);
 		
 		if (_sonogramSurface != null) {
-			_sonar = new Sonar(this, Sonar.FilterType.SONOGRAM_SHADER);
+			_sonar = new Sonar(this, true);
 			_sonar.setController(_sonogramSurface);
+			_sonar.setFilter(_sonogramSurface);
 			
 			// Scale the surface to avoid rendering the full resolution
 			DisplayMetrics dm = new DisplayMetrics();
 			getWindowManager().getDefaultDisplay().getMetrics(dm);
 			
-			float scale = 0.2f;
+			float scale = 0.25f;
 			int width = dm.widthPixels, height = (int) dm.heightPixels;
 			int scaledwidth = (int)(width * scale);
 			int scaledheight = (int)(height * scale);
@@ -57,12 +64,21 @@ public class MainActivity extends SherlockFragmentActivity {
 			}
 		}
 		else if (_sonogramView != null) {
-			_sonar = new Sonar(this, Sonar.FilterType.SONOGRAM);
+			_sonar = new Sonar(this, true);
 			_sonar.setController(_sonogramView);
+			_sonar.setFilter(new CompositeFilter(new SonogramFilter(Sonar.OPERATOR)/*, new AverageFilter()*/, _sonogramView));
+		}
+		else if (_histogramView2 != null) {
+			_sonar = new Sonar(this, true);
+			_sonar.setController(new CompositeSonarController(_histogramView, _histogramView2));
+			_sonar.setFilter(new CompositeFilter(
+				new CompositeFilter(new MatchedFilter(Sonar.OPERATOR, 2, 0), new AverageFilter(), _histogramView),
+				new CompositeFilter(new MatchedFilter(Sonar.OPERATOR, 2, 1), new AverageFilter(), _histogramView2)));
 		}
 		else if (_histogramView != null) {
-			_sonar = new Sonar(this, Sonar.FilterType.HISTOGRAM);
+			_sonar = new Sonar(this, false);
 			_sonar.setController(_histogramView);
+			_sonar.setFilter(new CompositeFilter(new MatchedFilter(Sonar.OPERATOR), new AverageFilter(), _histogramView));
 			//_histogramView.setZoom(3);
 		}
 	}

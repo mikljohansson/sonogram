@@ -10,12 +10,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import se.embargo.core.concurrent.Parallel;
-import se.embargo.sonar.dsp.AverageFilter;
 import se.embargo.sonar.dsp.CompositeFilter;
 import se.embargo.sonar.dsp.FramerateCounter;
 import se.embargo.sonar.dsp.ISignalFilter;
-import se.embargo.sonar.dsp.MatchedFilter;
-import se.embargo.sonar.dsp.SonogramFilter;
 import android.content.Context;
 import android.graphics.Rect;
 import android.media.AudioFormat;
@@ -29,16 +26,20 @@ public class Sonar {
 	private static final String TAG = "Sonar";
 	
 	private static final int SAMPLERATE = 44100;
-	private static final int PULSEINTERVAL = 60;
-	private static final int PULSEDURATION = 20;
+	private static final int PULSEINTERVAL = 80;
+	private static final int PULSEDURATION = 15;
 	
 	public static final int OPERATOR_LENGTH = SAMPLERATE * PULSEDURATION / 1000;
 	public static final int SAMPLES_LENGTH = SAMPLERATE * PULSEINTERVAL / 1000;
 
+	private static final float LOWFREQ = 1.0f / 16, HIGHFREQ = 0.5f;
+	
 	/**
 	 * Sonar pulse time series.
 	 */
-	public static final float[] OPERATOR = Signals.createLinearChirp(SAMPLERATE, PULSEDURATION, (float)SAMPLERATE / 4, (float)SAMPLERATE / 8);
+	public static final float[] OPERATOR = Signals.createLinearChirp(
+		SAMPLERATE, PULSEDURATION, (float)SAMPLERATE * LOWFREQ, 
+		(float)SAMPLERATE * HIGHFREQ - (float)SAMPLERATE * LOWFREQ);
 	
 	private ISonarController _controller;
 	private Worker _inputworker, _outputworker;
@@ -57,60 +58,32 @@ public class Sonar {
 	/**
 	 * DSP filter to apply to samples
 	 */
-	private ISignalFilter _filter;
+	private ISignalFilter _filter = new CompositeFilter(new AudioSync(), new FramerateCounter());
 	
 	/**
 	 * True if stereo recording should be used
 	 */
-	private final FilterType _type;
+	private final boolean _stereo;
 	
 	/**
 	 * One time delay to apply to output audio
 	 */
 	private AtomicInteger _outputDelay = new AtomicInteger(0);
 	
-	public enum FilterType { HISTOGRAM, SONOGRAM, SONOGRAM_SHADER };
-	
-	public Sonar(Context context, FilterType type) {
-		_type = type;
+	public Sonar(Context context, boolean stereo) {
+		_stereo = stereo;
 	}
-	
 	
 	public void setController(ISonarController controller) {
 		_controller = controller;
-
-		switch (_type) {
-			case HISTOGRAM: {
-				int resolution = SAMPLERATE * PULSEINTERVAL / 1000;
-				_controller.setSonarResolution(new Rect(0, 0, resolution, 1));
-				break;
-			}
-
-			case SONOGRAM:
-			case SONOGRAM_SHADER: {
-				int resolution = SAMPLERATE * PULSEINTERVAL / 1000;
-				int height = (int)Math.floor(Math.sqrt(resolution * resolution / 2)) - 10;
-				_controller.setSonarResolution(new Rect(0, 0, height * 2, height));
-				break;
-			}
-		}
+		_controller.setSonarResolution(new Rect(0, 0, SAMPLERATE * PULSEINTERVAL / 1000, 1));
+	}
+	
+	public void setFilter(ISignalFilter filter) {
+		_filter = new CompositeFilter(new AudioSync(), filter, new FramerateCounter());
 	}
 	
 	public void start() {
-		switch (_type) {
-			case HISTOGRAM:
-				_filter = new CompositeFilter(new AudioSync(), new MatchedFilter(_pulse), new AverageFilter(), new FramerateCounter());
-				break;
-
-			case SONOGRAM:
-				_filter = new CompositeFilter(new AudioSync(), new SonogramFilter(_pulse), /*new AverageFilter(), */new FramerateCounter());
-				break;
-
-			case SONOGRAM_SHADER:
-				_filter = new CompositeFilter(new AudioSync());
-				break;
-		}
-
 		_inputworker = new AudioInputWorker();
 		_inputworker.start();
 		
@@ -139,9 +112,6 @@ public class Sonar {
 			// Apply the filters
 			_filter.accept(item);
 
-			// Forward the filter output
-			_controller.receive(item);
-
 			// Reuse this task
 			_filterpool.offer(this);
 		}
@@ -157,7 +127,17 @@ public class Sonar {
 		
 		public void stop() {
 			_stop = true;
-			_thread.interrupt();
+			
+			for (long ts = System.currentTimeMillis(); System.currentTimeMillis() < ts + 500 && _thread.isAlive(); ) {
+				_thread.interrupt();
+				
+				try {
+					Thread.sleep(10);
+				}
+				catch (InterruptedException e) {
+					break;
+				}
+			}
 		}
 	}
 	
@@ -169,7 +149,7 @@ public class Sonar {
 			int channel;
 			short[] samples;
 			
-			if (_type != FilterType.HISTOGRAM) {
+			if (_stereo) {
 				samplecount = (resolution + _pulse.length) * 2;
 				chunksize = resolution * 2;
 				channel = AudioFormat.CHANNEL_IN_STEREO;
@@ -181,7 +161,7 @@ public class Sonar {
 			}
 			
 			AudioRecord record = new AudioRecord(
-				MediaRecorder.AudioSource.DEFAULT, SAMPLERATE, channel, AudioFormat.ENCODING_PCM_16BIT, 
+				MediaRecorder.AudioSource.CAMCORDER, SAMPLERATE, channel, AudioFormat.ENCODING_PCM_16BIT, 
 				Math.max(AudioTrack.getMinBufferSize(SAMPLERATE, channel, AudioFormat.ENCODING_PCM_16BIT), samplecount));
 			
 			try {
@@ -263,7 +243,7 @@ public class Sonar {
 	}
 	
 	public class AudioSync implements ISignalFilter, Runnable {
-		private static final int ADJUSTINTERVAL = PULSEINTERVAL * 3, POSITIVEHITS = 3, TOLERANCE = 15, THRESHOLD = 3;
+		private static final int ADJUSTINTERVAL = PULSEINTERVAL * 5, POSITIVEHITS = 2, TOLERANCE = 15, THRESHOLD = 3;
 		
 		private boolean _scheduled = false, _disabled = false;
 		private long _ts = 0;
@@ -276,13 +256,9 @@ public class Sonar {
 			if (_disabled) {
 				return;
 			}
-			
-			long ts = System.currentTimeMillis();
-			if (_ts == 0) {
-				_ts = ts;
-			}
 
 			// Analyze samples to find pulse offset
+			long ts = System.currentTimeMillis();
 			if (ts - _ts >= ADJUSTINTERVAL && !_scheduled) {
 				if (_samples == null || _samples.length != item.samples.length) {
 					_samples = Arrays.copyOf(item.samples, item.samples.length);
@@ -291,7 +267,6 @@ public class Sonar {
 					System.arraycopy(item.samples, 0, _samples, 0, item.samples.length);
 				}
 				
-				_ts = ts;
 				_scheduled = true;
 				_executor.submit(this);
 			}
@@ -304,7 +279,7 @@ public class Sonar {
 				final float[] operator = _pulse;
 				float maxval = 0, maxshort = Short.MAX_VALUE;
 				int maxpos = 0;
-				int step = _type != FilterType.HISTOGRAM ? 2 : 1;				
+				int step = _stereo ? 2 : 1;				
 				
 				// Apply convolution to find maximum value
 				for (int i = 0, il = samples.length - operator.length * step; i < il; i += step) {
@@ -315,7 +290,7 @@ public class Sonar {
 					
 					if (maxval < Math.abs(acc)) {
 						maxval = Math.abs(acc);
-						maxpos = _type != FilterType.HISTOGRAM ? i / 2 : i;
+						maxpos = _stereo ? i / 2 : i;
 					}
 				}
 				
@@ -334,6 +309,10 @@ public class Sonar {
 								_outputDelay.set((resolution - maxpos) % resolution);
 								Log.i(TAG, "Adjusting for pulse at offset " + maxpos);
 							}
+
+							_maxpos = 0;
+							_hitcount = 0;
+							_ts = System.currentTimeMillis();
 						}
 					}
 					else {

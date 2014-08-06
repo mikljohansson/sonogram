@@ -64,13 +64,19 @@ public class PreviewShader implements IRenderStage {
         muCRatioHandle = _program.getUniformLocation("uCRatio");
 
         // Set the viewpoint
-        Matrix.setLookAtM(mVMatrix, 0, 0, 0, 1.45f, 0f, 0f, 0f, 0f, 1.0f, 0.0f);
+        Matrix.setLookAtM(mVMatrix, 0, 0, 0, 1.45f, 0, 0, 0, 0, 1, 0);
         Matrix.setIdentityM(mSTMatrix, 0);
 
         // Set the screen ratio projection 
-        float ratio = (float)surfaceWidth / surfaceHeight;
-        Matrix.frustumM(mProjMatrix, 0, -ratio, ratio, -1, 1, 1f, 10);
-
+        if (surfaceHeight >= surfaceWidth) {
+        	float ratio = (float)surfaceWidth / surfaceHeight;
+        	Matrix.frustumM(mProjMatrix, 0, -ratio, ratio, -1, 1, 1, 10);
+        }
+        else {
+        	float ratio = (float)surfaceHeight / surfaceWidth;
+        	Matrix.frustumM(mProjMatrix, 0, -1, 1, -ratio, ratio, 1, 10);
+        }
+        
         // Apply the screen ratio projection
         Matrix.multiplyMM(mMVPMatrix, 0, mProjMatrix, 0, mVMatrix, 0);
     }
