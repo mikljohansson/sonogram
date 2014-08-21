@@ -1,8 +1,12 @@
-package se.embargo.sonar;
+package se.embargo.sonar.io;
 
 import android.graphics.Rect;
 
 public interface ISonarController {
+	/**
+	 * Sets the maximum resolution supported by this sonar
+	 * @param	resolution	Max supported resolution
+	 */
 	void setSonarResolution(Rect resolution);
 
 	/**

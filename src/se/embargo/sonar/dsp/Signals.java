@@ -1,4 +1,4 @@
-package se.embargo.sonar;
+package se.embargo.sonar.dsp;
 
 public class Signals {
 	/**

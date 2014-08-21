@@ -1,4 +1,4 @@
-package se.embargo.sonar;
+package se.embargo.sonar.io;
 
 import java.util.Arrays;
 import java.util.Queue;
@@ -13,6 +13,7 @@ import se.embargo.core.concurrent.Parallel;
 import se.embargo.sonar.dsp.CompositeFilter;
 import se.embargo.sonar.dsp.FramerateCounter;
 import se.embargo.sonar.dsp.ISignalFilter;
+import se.embargo.sonar.dsp.Signals;
 import android.content.Context;
 import android.graphics.Rect;
 import android.media.AudioFormat;
@@ -22,7 +23,7 @@ import android.media.AudioTrack;
 import android.media.MediaRecorder;
 import android.util.Log;
 
-public class Sonar {
+public class Sonar implements ISonar {
 	private static final String TAG = "Sonar";
 	
 	private static final int SAMPLERATE = 44100;
@@ -32,7 +33,7 @@ public class Sonar {
 	public static final int OPERATOR_LENGTH = SAMPLERATE * PULSEDURATION / 1000;
 	public static final int SAMPLES_LENGTH = SAMPLERATE * PULSEINTERVAL / 1000;
 
-	private static final float LOWFREQ = 1.0f / 16, HIGHFREQ = 0.5f;
+	private static final float LOWFREQ = 1.0f / 16, HIGHFREQ = 0.25f;
 	
 	/**
 	 * Sonar pulse time series.
@@ -42,7 +43,8 @@ public class Sonar {
 		(float)SAMPLERATE * HIGHFREQ - (float)SAMPLERATE * LOWFREQ);
 	
 	private ISonarController _controller;
-	private Worker _inputworker, _outputworker;
+	private SonarWorker _inputworker, _outputworker;
+	private Rect _resolution;
 	
 	private static ExecutorService _threadpool = new ThreadPoolExecutor(
 		Parallel.getNumberOfCores(), Parallel.getNumberOfCores(), 0, TimeUnit.MILLISECONDS, 
@@ -72,17 +74,27 @@ public class Sonar {
 	
 	public Sonar(Context context, boolean stereo) {
 		_stereo = stereo;
+		
+		if (_stereo) {
+			_resolution = new Rect(0, 0, SAMPLES_LENGTH, SAMPLES_LENGTH);
+		}
+		else {
+			_resolution = new Rect(0, 0, SAMPLES_LENGTH, 1);
+		}
 	}
 	
+	@Override
 	public void setController(ISonarController controller) {
 		_controller = controller;
-		_controller.setSonarResolution(new Rect(0, 0, SAMPLERATE * PULSEINTERVAL / 1000, 1));
+		_controller.setSonarResolution(_resolution);
 	}
 	
+	@Override
 	public void setFilter(ISignalFilter filter) {
 		_filter = new CompositeFilter(new AudioSync(), filter, new FramerateCounter());
 	}
 	
+	@Override
 	public void start() {
 		_inputworker = new AudioInputWorker();
 		_inputworker.start();
@@ -91,6 +103,7 @@ public class Sonar {
 		_outputworker.start();
 	}
 	
+	@Override
 	public void stop() {
 		_inputworker.stop();
 		_outputworker.stop();
@@ -104,7 +117,7 @@ public class Sonar {
 		}
 		
 		public void init(short[] samples) {
-			item.init(samples, _controller.getSonarWindow(), _controller.getSonarCanvas());
+			item.init(samples, _controller.getSonarWindow(), _controller.getSonarCanvas(), _resolution);
 		}
 
 		@Override
@@ -117,34 +130,10 @@ public class Sonar {
 		}
 	}
 	
-	public abstract class Worker implements Runnable {
-		private final Thread _thread = new Thread(this);
-		protected volatile boolean _stop = false;
-		
-		public void start() {
-			_thread.start();
-		}
-		
-		public void stop() {
-			_stop = true;
-			
-			for (long ts = System.currentTimeMillis(); System.currentTimeMillis() < ts + 500 && _thread.isAlive(); ) {
-				_thread.interrupt();
-				
-				try {
-					Thread.sleep(10);
-				}
-				catch (InterruptedException e) {
-					break;
-				}
-			}
-		}
-	}
-	
-	private class AudioInputWorker extends Worker {
+	private class AudioInputWorker extends SonarWorker {
 		@Override
 		public void run() {
-			int resolution = SAMPLERATE * PULSEINTERVAL / 1000;
+			int resolution = SAMPLES_LENGTH;
 			int samplecount, chunksize;
 			int channel;
 			short[] samples;
@@ -171,7 +160,13 @@ public class Sonar {
 
 				while (!_stop) {
 					// Read complete data chunk into last chunksize of buffer
-					position += record.read(samples, position, samplecount - position);
+					int count = record.read(samples, position, samplecount - position);
+					if (count < 0 || count == AudioRecord.ERROR_INVALID_OPERATION || count == AudioRecord.ERROR_BAD_VALUE) {
+						Log.e(TAG, "Audio reader problem: " + count);
+						return;
+					}
+					
+					position += count;
 					if (position < samplecount) {
 						Thread.sleep(PULSEINTERVAL / 10);
 						continue;
@@ -200,10 +195,10 @@ public class Sonar {
 		}
 	}
 
-	private class AudioOutputWorker extends Worker {
+	private class AudioOutputWorker extends SonarWorker {
 		@Override
 		public void run() {
-			int resolution = SAMPLERATE * PULSEINTERVAL / 1000;
+			int resolution = SAMPLES_LENGTH;
 			int position = 0;
 			short[] pulse = Signals.toShort(_pulse, 0.5f);
 			short[] silence = new short[_pulse.length];
@@ -296,7 +291,7 @@ public class Sonar {
 				
 				synchronized (this) {
 					Log.i(TAG, "Pulse found at offset " + maxpos);
-					int resolution = SAMPLERATE * PULSEINTERVAL / 1000;
+					int resolution = SAMPLES_LENGTH;
 
 					// Check if pulse was found in same position again (otherwise it's noise)
 					if (Math.abs(_maxpos - maxpos) < TOLERANCE) {

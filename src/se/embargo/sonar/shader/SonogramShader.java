@@ -3,7 +3,7 @@ package se.embargo.sonar.shader;
 import se.embargo.core.graphic.ShaderProgram;
 import se.embargo.core.graphic.Shaders;
 import se.embargo.sonar.R;
-import se.embargo.sonar.Sonar;
+import se.embargo.sonar.io.Sonar;
 import android.opengl.GLES20;
 
 public class SonogramShader {

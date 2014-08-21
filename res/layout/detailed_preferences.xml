@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ListView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/detailedPreferences"
+    android:layout_width="250dp"
+	android:layout_height="wrap_content"
+    android:layout_margin="40dp"
+    android:layout_centerInParent="true"
+    android:visibility="gone"
+    android:cacheColorHint="@android:color/transparent"
+    android:background="@drawable/bg_detailed_preferences"/>

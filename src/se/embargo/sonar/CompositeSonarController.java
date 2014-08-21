@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import se.embargo.sonar.io.ISonarController;
+
 import android.graphics.Rect;
 
 public class CompositeSonarController implements ISonarController {

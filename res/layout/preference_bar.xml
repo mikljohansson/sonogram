@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<se.embargo.sonar.widget.PreferenceLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="wrap_content"
+	android:layout_height="match_parent"
+	android:minWidth="76dp"
+	android:background="@drawable/bg_header_pattern">
+	
+    <LinearLayout 
+		android:layout_width="wrap_content"
+		android:layout_height="match_parent"
+		android:layout_centerHorizontal="true"
+        android:orientation="vertical">
+		<LinearLayout 
+			style="@style/PreviewButtonLayout">
+			<se.embargo.sonar.widget.PreferenceButton 
+				style="@style/PreviewButton"
+				android:id="@+id/editSettingsButton" 
+				android:src="@drawable/ic_button_settings"
+				android:contentDescription="@string/menu_option_settings"/>
+			<se.embargo.sonar.widget.PreferenceButton 
+				style="@style/PreviewButton"
+				android:id="@+id/recordButton" 
+				android:src="@drawable/ic_button_record"
+				android:contentDescription="@string/menu_option_settings"/>
+		</LinearLayout>
+	</LinearLayout>
+</se.embargo.sonar.widget.PreferenceLayout>

@@ -4,6 +4,8 @@ import se.embargo.sonar.dsp.AverageFilter;
 import se.embargo.sonar.dsp.CompositeFilter;
 import se.embargo.sonar.dsp.MatchedFilter;
 import se.embargo.sonar.dsp.SonogramFilter;
+import se.embargo.sonar.io.ISonar;
+import se.embargo.sonar.io.Sonar;
 import se.embargo.sonar.shader.SonogramSurface;
 import se.embargo.sonar.widget.HistogramView;
 import se.embargo.sonar.widget.SonogramView;
@@ -23,7 +25,7 @@ public class MainActivity extends SherlockFragmentActivity {
 	private SonogramView _sonogramView;
 	private HistogramView _histogramView;
 	private HistogramView _histogramView2;
-	private Sonar _sonar;
+	private ISonar _sonar;
 	
 	@Override
 	public void onCreate(Bundle state) {
@@ -39,7 +41,7 @@ public class MainActivity extends SherlockFragmentActivity {
 		// Force switch to landscape orientation
 		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 		
-		setContentView(R.layout.shader_sonogram);
+		setContentView(R.layout.main_activity);
 		_sonogramSurface = (SonogramSurface)findViewById(R.id.sonogram_surface);
 		_sonogramView = (SonogramView)findViewById(R.id.sonogram);
 		_histogramView = (HistogramView)findViewById(R.id.histogram);
