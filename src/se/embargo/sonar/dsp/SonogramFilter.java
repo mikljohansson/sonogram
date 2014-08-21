@@ -16,7 +16,7 @@ public class SonogramFilter implements ISignalFilter {
 	 */
 	private static final float SPEED = 340.29f;
 	
-	private static final int STEP = 3;
+	private static final int STEP = 1;
 	
 	private final float[] _operator;
 	private final FilterBody _filter = new FilterBody();
@@ -50,23 +50,17 @@ public class SonogramFilter implements ISignalFilter {
 			final float[] operator = _operator;
 			final short[] samples = item.samples;
 			final float[] matched = item.matched;
-			float maxvalue = 0;
 			
 			// Divisor to get samples into [-1.0, 1.0] range
 			final float divisor = (float)Short.MAX_VALUE;
 			
 			for (; i < last; i++) {
 				float acc = 0;
-				for (int j = 0, jl = operator.length, s = i; j < jl; j++, s += 2) {
-					acc += ((float)samples[s] / divisor) * operator[j];
+				for (int j = 0, jl = operator.length, si = i; j < jl; j++, si += 2) {
+					acc += ((float)samples[si] / divisor) * operator[j];
 				}
 				
-				matched[i] = acc;
-				maxvalue = Math.max(maxvalue, acc);
-			}
-			
-			synchronized (item) {
-				item.maxvalue = Math.max(item.maxvalue, maxvalue);
+				matched[i] = Math.abs(acc);
 			}
 		}
 	}
@@ -77,10 +71,11 @@ public class SonogramFilter implements ISignalFilter {
 		public void run(Item item, int y, int ylast) {
 			final float[] matched = item.matched;
 			final float[] output = item.output;
+			float maxvalue = 0;
 			
 			// Number of samples per pixel on x/y axes
 			final float xstep = (float)item.window.width() / (float)item.canvas.width(),
-					    ystep = xstep; //(float)item.window.height() / (float)item.canvas.height();
+					    ystep = xstep;//(float)item.window.height() / (float)item.canvas.height();
 			
 			// Number of samples between microphones
 			final float baseline = item.samplerate / SPEED * BASELINE;
@@ -110,7 +105,7 @@ public class SonogramFilter implements ISignalFilter {
 					for (int sai = (int)ha1 * 2, sbi = (int)hb1 * 2 + 1, sal = sai + (int)Math.ceil(xstep); sai < sal; sai++, sbi++) { 
 						float asample = matched[sai] * ra1 + matched[sai + 2] * ra2;
 						float bsample = matched[sbi] * rb1 + matched[sbi + 2] * rb2;
-						acc += Math.abs(asample * bsample);
+						acc += asample * bsample;
 					}
 					
 					for (int sy = oi, syl = oi + xlast * STEP; sy < syl; sy += xlast) {
@@ -118,7 +113,13 @@ public class SonogramFilter implements ISignalFilter {
 							output[sx] = acc;
 						}
 					}
+					
+					maxvalue = Math.max(maxvalue, acc);
 				}
+			}
+			
+			synchronized (item) {
+				item.maxvalue = Math.max(item.maxvalue, maxvalue);
 			}
 		}
 	}

@@ -17,7 +17,7 @@
             android:layout_centerInParent="true"
             android:background="#00ff00">
 	        
-	        <include layout="@layout/dsp_histogram"/>
+	        <include layout="@layout/dsp_sonogram"/>
 
 		    <include layout="@layout/detailed_preferences"/>
 		</RelativeLayout>
