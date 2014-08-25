@@ -87,7 +87,7 @@ public class SonogramFilter implements ISignalFilter {
 				// For each pixel of current line
 				for (int x = 0, xlast = item.canvas.width(), oi = y * item.canvas.width(); x < xlast; x++, oi++) {
 					// Distance in samples from mic-A (middle-bottom of canvas)
-					final float xsa = Math.abs(((float)item.canvas.width() - x) * xstep + item.window.left - item.resolution.width() / 2.0f);
+					final float xsa = Math.abs(((float)item.canvas.width() - x) * xstep + item.window.left - item.resolution.width() / 2);
 					final float ha1 = FloatMath.sqrt(xsa * xsa + ysqr);
 					final float ra2 = ha1 - (int)ha1, ra1 = 1.0f - ra2;
 
@@ -98,7 +98,10 @@ public class SonogramFilter implements ISignalFilter {
 
 					// Reduce the A/B channels 
 					float acc = 0;
-					for (int sai = (int)ha1 * 2, sbi = (int)hb1 * 2 + 1, sal = sai + (int)Math.ceil(xstep), ix = 0, ixl = (int)Math.ceil(xstep) - 1; sai < sal; sai++, sbi++, ix++) { 
+					for (int sai = (int)ha1 * 2, sbi = (int)hb1 * 2 + 1, 
+						     sal = Math.min(sai + (int)Math.ceil(xstep), matched.length - 2),
+							 sbl = Math.min(sbi + (int)Math.ceil(xstep), matched.length - 2), 
+							 ix = 0, ixl = (int)Math.ceil(xstep) - 1; sai < sal && sbi < sbl; sai++, sbi++, ix++) { 
 						float asample;
 						float bsample;
 						

@@ -17,11 +17,6 @@
 				android:id="@+id/editSettingsButton" 
 				android:src="@drawable/ic_button_settings"
 				android:contentDescription="@string/menu_option_settings"/>
-			<se.embargo.sonar.widget.PreferenceButton 
-				style="@style/PreviewButton"
-				android:id="@+id/recordButton" 
-				android:src="@drawable/ic_button_record"
-				android:contentDescription="@string/menu_option_settings"/>
 		</LinearLayout>
 	</LinearLayout>
 </se.embargo.sonar.widget.PreferenceLayout>
