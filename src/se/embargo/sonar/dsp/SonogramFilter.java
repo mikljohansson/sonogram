@@ -80,7 +80,7 @@ public class SonogramFilter implements ISignalFilter {
 			
 			// For each line in sonogram
 			for (; y < ylast; y++) {
-				// Distance in samples to top of sonar resolution
+				// Distance in samples to bottom of sonar resolution
 				final float ys = ((float)item.canvas.height() - y) * ystep + item.window.top + (item.resolution.height() - item.window.bottom), 
 						    ysqr = ys * ys;
 				
