@@ -28,19 +28,19 @@ public class Sonar implements ISonar {
 	
 	private static final int SAMPLERATE = 44100;
 	private static final int PULSEINTERVAL = 80;
-	private static final int PULSEDURATION = 15;
+	private static final int PULSEDURATION = 5;
+	private static final float PULSEAMPLITUDE = 0.9f;
 	
 	public static final int OPERATOR_LENGTH = SAMPLERATE * PULSEDURATION / 1000;
 	public static final int SAMPLES_LENGTH = SAMPLERATE * PULSEINTERVAL / 1000;
-
-	private static final float LOWFREQ = 1.0f / 16, HIGHFREQ = 0.25f;
 	
 	/**
 	 * Sonar pulse time series.
 	 */
 	public static final float[] OPERATOR = Signals.createLinearChirp(
-		SAMPLERATE, PULSEDURATION, (float)SAMPLERATE * LOWFREQ, 
-		(float)SAMPLERATE * HIGHFREQ - (float)SAMPLERATE * LOWFREQ);
+		SAMPLERATE, PULSEDURATION, 
+		(float)SAMPLERATE / 2 - SAMPLERATE / 4,
+		(float)SAMPLERATE / 4);
 	
 	private ISonarController _controller;
 	private SonarWorker _inputworker, _outputworker;
@@ -183,7 +183,7 @@ public class Sonar implements ISonar {
 		public void run() {
 			int resolution = SAMPLES_LENGTH;
 			int position = 0;
-			short[] pulse = Signals.toShort(_pulse, 0.5f);
+			short[] pulse = Signals.toShort(_pulse, PULSEAMPLITUDE);
 			short[] silence = new short[_pulse.length];
 			
 			AudioTrack track = new AudioTrack(

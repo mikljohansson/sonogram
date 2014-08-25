@@ -2,25 +2,28 @@ package se.embargo.sonar.dsp;
 
 import se.embargo.core.concurrent.IForBody;
 import se.embargo.core.concurrent.Parallel;
+import se.embargo.core.databinding.observable.IObservableValue;
 import android.annotation.SuppressLint;
 
 public class SonogramFilter implements ISignalFilter {
-	/**
-	 * Distance between microphones in meters
-	 */
-	private static final float BASELINE = 0.12f;
-	
 	/**
 	 * Speed of sound in meters/second
 	 */
 	private static final float SPEED = 340.29f;
 	
 	private final float[] _operator;
+
+	/**
+	 * Distance between microphones in meters
+	 */
+	private final IObservableValue<Float> _baseline;
+
 	private final FilterBody _filter = new FilterBody();
 	private final ReduceBody _reduce = new ReduceBody();
 	
-	public SonogramFilter(float[] operator) {
+	public SonogramFilter(float[] operator, IObservableValue<Float> baseline) {
 		_operator = operator;
+		_baseline = baseline;
 	}
 
 	@Override
@@ -78,7 +81,7 @@ public class SonogramFilter implements ISignalFilter {
 						yadj = item.resolution.bottom - item.window.bottom;
 			
 			// Number of samples between microphones
-			final float baseline = item.samplerate / SPEED * BASELINE;
+			final float baseline = item.samplerate / SPEED * _baseline.getValue();
 			
 			// For each line in sonogram
 			for (; y < ylast; y++) {

@@ -18,5 +18,13 @@
 				android:src="@drawable/ic_button_settings"
 				android:contentDescription="@string/menu_option_settings"/>
 		</LinearLayout>
+		<LinearLayout 
+			style="@style/PreviewButtonLayout">
+			<se.embargo.sonar.widget.PreferenceButton 
+				style="@style/PreviewButton"
+				android:id="@+id/focusButton" 
+				android:src="@drawable/ic_button_focus"
+				android:contentDescription="@string/menu_option_focus"/>
+		</LinearLayout>
 	</LinearLayout>
 </se.embargo.sonar.widget.PreferenceLayout>

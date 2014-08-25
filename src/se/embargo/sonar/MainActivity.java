@@ -6,10 +6,12 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 
+import se.embargo.core.databinding.PreferenceProperties;
 import se.embargo.core.databinding.observable.ChangeEvent;
 import se.embargo.core.databinding.observable.IChangeListener;
 import se.embargo.core.databinding.observable.IObservableValue;
 import se.embargo.core.databinding.observable.WritableValue;
+import se.embargo.core.widget.SeekBarDialog;
 import se.embargo.sonar.dsp.AverageFilter;
 import se.embargo.sonar.dsp.CompositeFilter;
 import se.embargo.sonar.dsp.FramerateCounter;
@@ -23,7 +25,6 @@ import se.embargo.sonar.io.StreamWriter;
 import se.embargo.sonar.shader.SonogramSurface;
 import se.embargo.sonar.widget.HistogramView;
 import se.embargo.sonar.widget.SonogramView;
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
@@ -47,13 +48,16 @@ public class MainActivity extends SherlockFragmentActivity {
 
 	private static final String PREFS_NAMESPACE = "se.embargo.sonar";
 	private static final String PREF_IMAGECOUNT = "imagecount";
+	private static final String PREF_BASELINE = "baseline";
+	private static final float PREF_BASELINE_DEFAULT = 0.12f;
+	
 	private static final String DIRECTORY = "Sonar";
 	private static final String FILENAME_PATTERN = "IMGS%04d";
 
 	/**
 	 * Application wide preferences
 	 */
-	protected SharedPreferences _prefs;
+	private SharedPreferences _prefs;
 	
 	private SonogramSurface _sonogramSurface;
 	private SonogramView _sonogramView;
@@ -70,12 +74,14 @@ public class MainActivity extends SherlockFragmentActivity {
 	 * Current camera state. 
 	 */
 	private IObservableValue<RecordState> _cameraState = new WritableValue<RecordState>(RecordState.Video);
+	private IObservableValue<Float> _baseline;
 	
 	@Override
 	public void onCreate(Bundle state) {
 		super.onCreate(state);
 
 		_prefs = getSharedPreferences(PREFS_NAMESPACE, MODE_PRIVATE);
+		_baseline = PreferenceProperties.floating(PREF_BASELINE, PREF_BASELINE_DEFAULT).observe(_prefs);
 		
 		// Keep screen on while this activity is focused 
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -94,8 +100,9 @@ public class MainActivity extends SherlockFragmentActivity {
 		_histogramView2 = (HistogramView)findViewById(R.id.histogram2);
 
 		_sonar = null;
-		if (true /*Intent.ACTION_VIEW.equals(getIntent().getAction())*/) {
-			Uri url = Uri.parse("file:///storage/emulated/0/Pictures/Sonar/IMGS0007.sonar");//getIntent().getData();
+		if (true/*Intent.ACTION_VIEW.equals(getIntent().getAction())*/) {
+			//Uri url = getIntent().getData();
+			Uri url = Uri.parse("file:///storage/emulated/0/Pictures/Sonar/IMGS0009.sonar");
 			if (url != null) {
 				try {
 					Log.i(TAG, "Opening sonar dump: " + url);
@@ -108,7 +115,7 @@ public class MainActivity extends SherlockFragmentActivity {
 		}
 
 		if (_sonar == null) {
-			//_sonar = new Sonar(this);
+			_sonar = new Sonar(this);
 		}
 		
 		if (_sonogramSurface != null) {
@@ -130,8 +137,7 @@ public class MainActivity extends SherlockFragmentActivity {
 		}
 		else if (_sonogramView != null) {
 			_sonar.setController(_sonogramView);
-			_sonar.setFilter(new CompositeFilter(new SonogramFilter(Sonar.OPERATOR)/*, new AverageFilter()*/, _sonogramView, new FramerateCounter()));
-			_sonogramView.setZoom(3);
+			_sonar.setFilter(new CompositeFilter(new SonogramFilter(Sonar.OPERATOR, _baseline)/*, new AverageFilter()*/, _sonogramView, new FramerateCounter()));
 		}
 		else if (_histogramView2 != null) {
 			_sonar.setController(new CompositeSonarController(_histogramView, _histogramView2));
@@ -152,6 +158,12 @@ public class MainActivity extends SherlockFragmentActivity {
 			cameraModeButton.setOnClickListener(new CameraModeButtonListener());
 			_cameraState.addChangeListener(new RecordStateListener());
 			_cameraState.setValue(_cameraState.getValue());
+		}
+		
+		// Connect the focus button
+		{
+			final ImageButton focusButton = (ImageButton)findViewById(R.id.focusButton);
+			focusButton.setOnClickListener(new FocusButtonListener());
 		}
 	}
 	
@@ -189,6 +201,15 @@ public class MainActivity extends SherlockFragmentActivity {
 		}
 	}
 	
+	private class FocusButtonListener implements View.OnClickListener {
+		@Override
+		public void onClick(View v) {
+			SeekBarDialog dialog = new SeekBarDialog(MainActivity.this, _baseline, 0.001f, 0.01f, 0.30f);
+			dialog.setFormat("%.03f");
+			dialog.show();
+		}
+	}
+
 	private class RecordStateListener implements IChangeListener<RecordState> {
 		private View.OnTouchListener _captureListener;
 

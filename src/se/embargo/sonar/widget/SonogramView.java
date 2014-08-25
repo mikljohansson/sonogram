@@ -86,7 +86,6 @@ public class SonogramView extends BufferedView implements ISonarController, ISig
 	    	final float factor = 255f / (float)Math.log(item.maxvalue + 1);
 		    //final float factor = 255f / item.maxvalue;
 	    	final float[] output = item.output;
-	    	Log.i("foo", "Window is: " + item.window);
 		    
 		    for (; it < last; it++) {
 		    	// Scale the value logarithmically into the maximum height

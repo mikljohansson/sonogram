@@ -61,7 +61,6 @@ public abstract class BufferedView extends View {
 		_zoomw = _zoomWindow.width();
 		_zoomh = _zoomWindow.height();
 		_zoom = 1.0f;
-		setZoom(3.0f);
 	}
 	
 	/**
