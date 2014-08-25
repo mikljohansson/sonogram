@@ -1,5 +1,6 @@
 package se.embargo.sonar.io;
 
+import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -8,6 +9,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.InflaterInputStream;
 
 import se.embargo.core.concurrent.Parallel;
 import se.embargo.sonar.dsp.ISignalFilter;
@@ -29,12 +31,17 @@ public class StreamReader implements ISonar {
 	private final Queue<FilterTask> _filterpool = new ArrayBlockingQueue<FilterTask>(Parallel.getNumberOfCores(), false);
 	
 	public StreamReader(InputStream is) {
-		_is = new DataInputStream(is);
+		_is = new DataInputStream(new InflaterInputStream(new BufferedInputStream(is)));
 	}
 
 	@Override
 	public void setController(ISonarController controller) {
 		_controller = controller;
+	}
+
+	@Override
+	public ISignalFilter getFilter() {
+		return _filter;
 	}
 
 	@Override

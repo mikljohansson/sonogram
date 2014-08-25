@@ -88,6 +88,11 @@ public class Sonar implements ISonar {
 		_controller = controller;
 		_controller.setSonarResolution(_resolution);
 	}
+
+	@Override
+	public ISignalFilter getFilter() {
+		return _filter;
+	}
 	
 	@Override
 	public void setFilter(ISignalFilter filter) {

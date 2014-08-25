@@ -6,6 +6,8 @@ public interface ISonar {
 
 	public abstract void setController(ISonarController controller);
 
+	public abstract ISignalFilter getFilter();
+	
 	public abstract void setFilter(ISignalFilter filter);
 
 	public abstract void start();
