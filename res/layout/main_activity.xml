@@ -4,6 +4,7 @@
     android:layout_height="match_parent"
     android:background="#000000"
     android:orientation="horizontal" >
+    <include layout="@layout/preference_bar"/>
     
     <RelativeLayout
 		android:layout_width="0dp"
@@ -22,6 +23,6 @@
 		    <include layout="@layout/detailed_preferences"/>
 		</RelativeLayout>
 	</RelativeLayout>
-    
-    <include layout="@layout/preference_bar"/>
+
+	<include layout="@layout/control_bar"/>
 </LinearLayout>
