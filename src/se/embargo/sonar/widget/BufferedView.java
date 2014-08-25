@@ -20,6 +20,7 @@ public abstract class BufferedView extends View {
 	
 	private volatile Rect _dataResolution = new Rect(_canvasWindow);
 	private volatile Rect _dataWindow = new Rect(_canvasWindow);
+	private volatile Rect _zoomWindow = new Rect(_canvasWindow);
 	private float _zoom = 1.0f;
 	private float _zoomx = 0, _zoomy = 0, _zoomw = 0, _zoomh = 0;
 
@@ -49,11 +50,16 @@ public abstract class BufferedView extends View {
 
 	public synchronized void setResolution(Rect resolution) {
 		_dataResolution = new Rect(resolution);
-		setWindow(new Rect(_dataResolution));
-		_zoomx = _dataWindow.left;
-		_zoomy = _dataWindow.right;
-		_zoomw = _dataWindow.width();
-		_zoomh = _dataWindow.height();
+
+		Rect canvas = getCanvas();
+		int width = (int)((float)resolution.height() * ((float)canvas.width() / (float)canvas.height()));
+		_dataWindow = new Rect(resolution.centerX() - width / 2, resolution.top, resolution.centerX() + width / 2, resolution.bottom);
+		setWindow(_dataWindow);
+		
+		_zoomx = _zoomWindow.left;
+		_zoomy = _zoomWindow.right;
+		_zoomw = _zoomWindow.width();
+		_zoomh = _zoomWindow.height();
 		_zoom = 1.0f;
 	}
 	
@@ -61,11 +67,11 @@ public abstract class BufferedView extends View {
 	 * @note	Must not lock or the audio reader thread will be blocked
 	 */
 	public Rect getWindow() {
-		return _dataWindow;
+		return _zoomWindow;
 	}
 	
 	protected synchronized void setWindow(Rect window) {
-		_dataWindow = window;
+		_zoomWindow = window;
 		invalidateCanvas();
 	}
 	
@@ -78,29 +84,30 @@ public abstract class BufferedView extends View {
 	
 	protected synchronized void setCanvas(Rect canvas) {
 		_canvasWindow = canvas;
+		setResolution(_dataResolution);
 	}
 	
 	public synchronized void setZoom(float zoom, float x, float y) {
-		float zoomw = Math.min((float)_dataResolution.width() / zoom, _dataResolution.width()),
-			  zoomh = Math.min((float)_dataResolution.height() / zoom, _dataResolution.height());
+		float zoomw = Math.min((float)_dataWindow.width() / zoom, _dataWindow.width()),
+			  zoomh = Math.min((float)_dataWindow.height() / zoom, _dataWindow.height());
 		
-		float xadj = (zoomw - _zoomw) * (x - _zoomx) / _dataWindow.width(),
-		      yadj = (zoomh - _zoomh) * (y - _zoomy) / _dataWindow.height();
+		float xadj = (zoomw - _zoomw) * (x - _zoomx) / _zoomWindow.width(),
+		      yadj = (zoomh - _zoomh) * (y - _zoomy) / _zoomWindow.height();
 
-		float zoomx = Math.max(Math.min(_zoomx - xadj + zoomw, _dataResolution.right) - zoomw, _dataResolution.left),
-			  zoomy = Math.max(Math.min(_zoomy - yadj + zoomh, _dataResolution.bottom) - zoomh, _dataResolution.top);
+		float zoomx = Math.max(Math.min(_zoomx - xadj + zoomw, _dataWindow.right) - zoomw, _dataWindow.left),
+			  zoomy = Math.max(Math.min(_zoomy - yadj + zoomh, _dataWindow.bottom) - zoomh, _dataWindow.top);
 		
-		_zoom = Math.max((float)_dataResolution.width() / zoomw, (float)_dataResolution.height() / zoomh);
+		_zoom = Math.max((float)_dataWindow.width() / zoomw, (float)_dataWindow.height() / zoomh);
 		_zoomx = zoomx;
 		_zoomy = zoomy;
 		_zoomw = zoomw;
 		_zoomh = zoomh;
 
 		setWindow(new Rect(
-			Math.max((int)zoomx, _dataResolution.left),
-			Math.max((int)zoomy, _dataResolution.top),
-			Math.min((int)zoomx + (int)zoomw, _dataResolution.right),
-			Math.min((int)zoomy + (int)zoomh, _dataResolution.bottom)));
+			Math.max((int)zoomx, _dataWindow.left),
+			Math.max((int)zoomy, _dataWindow.top),
+			Math.min((int)zoomx + (int)zoomw, _dataWindow.right),
+			Math.min((int)zoomy + (int)zoomh, _dataWindow.bottom)));
 	}
 	
 	public synchronized void setZoom(float zoom) {
@@ -108,9 +115,9 @@ public abstract class BufferedView extends View {
 	}
 	
 	private synchronized void setPosition(float x, float y) {
-		int w = _dataWindow.width(), h = _dataWindow.height();
-		_zoomx = Math.max(_dataResolution.left, Math.min(x, _dataResolution.right - w));
-		_zoomy = Math.max(_dataResolution.top, Math.min(y, _dataResolution.bottom - h));
+		int w = _zoomWindow.width(), h = _zoomWindow.height();
+		_zoomx = Math.max(_dataWindow.left, Math.min(x, _dataWindow.right - w));
+		_zoomy = Math.max(_dataWindow.top, Math.min(y, _dataWindow.bottom - h));
 		
 		setWindow(new Rect(
 			(int)_zoomx, 
@@ -152,7 +159,7 @@ public abstract class BufferedView extends View {
 	    if (_invalid) {
 	    	_invalid = false;
 	    	_canvas.drawColor(Color.BLACK);
-	    	draw(_canvas, _dataWindow, _canvasWindow);
+	    	draw(_canvas, _zoomWindow, _canvasWindow);
 	    }
 	
 	    if (_bitmap != null) {
@@ -195,8 +202,8 @@ public abstract class BufferedView extends View {
 					case MotionEvent.ACTION_MOVE:
 						float x = event.getX(), y = event.getY();
 						if (_singleTouch) {
-							float xres = (float)_dataWindow.width() / (float)_canvasWindow.width(),
-								  yres = (float)_dataWindow.height() / (float)_canvasWindow.height();
+							float xres = (float)_zoomWindow.width() / (float)_canvasWindow.width(),
+								  yres = (float)_zoomWindow.height() / (float)_canvasWindow.height();
 							float zoomx = _zx + (_x - (x - _canvasWindow.left)) * xres, 
 								  zoomy = _zy + (_y - (y - _canvasWindow.top)) * yres;
 							setPosition(zoomx, zoomy);
@@ -219,8 +226,8 @@ public abstract class BufferedView extends View {
 		public boolean onScale(ScaleGestureDetector detector) {
 			_singleTouch = false;
 
-			float xres = (float)_dataWindow.width() / (float)_canvasWindow.width(),
-				  yres = (float)_dataWindow.height() / (float)_canvasWindow.height();
+			float xres = (float)_zoomWindow.width() / (float)_canvasWindow.width(),
+				  yres = (float)_zoomWindow.height() / (float)_canvasWindow.height();
 			setZoom(_zoom * detector.getScaleFactor(), 
 				    _zoomx + (detector.getFocusX() - _canvasWindow.left) * xres, 
 				    _zoomy + (detector.getFocusY() - _canvasWindow.top) * yres);

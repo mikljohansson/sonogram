@@ -46,10 +46,7 @@ public class SonogramView extends BufferedView implements ISonarController, ISig
 	 */
 	@Override
 	public Rect getSonarWindow() {
-		Rect window = getWindow();
-		Rect canvas = getCanvas();
-		int height = (int)((float)window.height() * ((float)canvas.height() / (float)canvas.width()));
-		return new Rect(window.left, window.top, window.right, window.top + height);
+		return getWindow();
 	}
 	
 	/**
