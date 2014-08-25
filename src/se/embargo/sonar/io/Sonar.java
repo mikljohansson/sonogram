@@ -63,24 +63,12 @@ public class Sonar implements ISonar {
 	private ISignalFilter _filter = new CompositeFilter(new AudioSync(), new FramerateCounter());
 	
 	/**
-	 * True if stereo recording should be used
-	 */
-	private final boolean _stereo;
-	
-	/**
 	 * One time delay to apply to output audio
 	 */
 	private AtomicInteger _outputDelay = new AtomicInteger(0);
 	
-	public Sonar(Context context, boolean stereo) {
-		_stereo = stereo;
-		
-		if (_stereo) {
-			_resolution = new Rect(0, 0, SAMPLES_LENGTH * 2, SAMPLES_LENGTH);
-		}
-		else {
-			_resolution = new Rect(0, 0, SAMPLES_LENGTH, 1);
-		}
+	public Sonar(Context context) {
+		_resolution = new Rect(0, 0, SAMPLES_LENGTH * 2, SAMPLES_LENGTH);
 	}
 	
 	@Override
@@ -139,20 +127,10 @@ public class Sonar implements ISonar {
 		@Override
 		public void run() {
 			int resolution = SAMPLES_LENGTH;
-			int samplecount, chunksize;
-			int channel;
+			int samplecount = (resolution + _pulse.length) * 2;
+			int chunksize = resolution * 2;
+			int channel = AudioFormat.CHANNEL_IN_STEREO;
 			short[] samples;
-			
-			if (_stereo) {
-				samplecount = (resolution + _pulse.length) * 2;
-				chunksize = resolution * 2;
-				channel = AudioFormat.CHANNEL_IN_STEREO;
-			}
-			else {
-				samplecount = resolution + _pulse.length;
-				chunksize = resolution;
-				channel = AudioFormat.CHANNEL_IN_MONO;
-			}
 			
 			AudioRecord record = new AudioRecord(
 				MediaRecorder.AudioSource.CAMCORDER, SAMPLERATE, channel, AudioFormat.ENCODING_PCM_16BIT, 
@@ -279,7 +257,7 @@ public class Sonar implements ISonar {
 				final float[] operator = _pulse;
 				float maxval = 0, maxshort = Short.MAX_VALUE;
 				int maxpos = 0;
-				int step = _stereo ? 2 : 1;				
+				int step = 2;				
 				
 				// Apply convolution to find maximum value
 				for (int i = 0, il = samples.length - operator.length * step; i < il; i += step) {
@@ -290,7 +268,7 @@ public class Sonar implements ISonar {
 					
 					if (maxval < Math.abs(acc)) {
 						maxval = Math.abs(acc);
-						maxpos = _stereo ? i / 2 : i;
+						maxpos = i / 2;
 					}
 				}
 				
