@@ -2,6 +2,7 @@ package se.embargo.sonar.io;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Queue;
@@ -94,6 +95,7 @@ public class StreamReader implements ISonar {
 				samplecount = _is.readInt();
 				width = _is.readInt();
 				heigth = _is.readInt();
+				_is.mark(Integer.MAX_VALUE);
 			}
 			catch (IOException e) {
 				Log.e(TAG, e.getMessage(), e);
@@ -110,7 +112,13 @@ public class StreamReader implements ISonar {
 					
 					// Read chunk into local buffer
 					for (int i = 0; i < samples.length; i++) {
-						samples[i] = _is.readShort();
+						try {
+							samples[i] = _is.readShort();
+						}
+						catch (EOFException e) {
+							_is.reset();
+							continue;
+						}
 					}
 	
 					// Allocate a new filter task
