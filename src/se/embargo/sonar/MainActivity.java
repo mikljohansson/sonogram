@@ -12,6 +12,7 @@ import se.embargo.core.databinding.observable.IObservableValue;
 import se.embargo.core.databinding.observable.WritableValue;
 import se.embargo.sonar.dsp.AverageFilter;
 import se.embargo.sonar.dsp.CompositeFilter;
+import se.embargo.sonar.dsp.FramerateCounter;
 import se.embargo.sonar.dsp.ISignalFilter;
 import se.embargo.sonar.dsp.MatchedFilter;
 import se.embargo.sonar.dsp.SonogramFilter;
@@ -68,7 +69,7 @@ public class MainActivity extends SherlockFragmentActivity {
 	/**
 	 * Current camera state. 
 	 */
-	private IObservableValue<RecordState> _cameraState = new WritableValue<RecordState>(RecordState.Picture);
+	private IObservableValue<RecordState> _cameraState = new WritableValue<RecordState>(RecordState.Video);
 	
 	@Override
 	public void onCreate(Bundle state) {
@@ -93,10 +94,11 @@ public class MainActivity extends SherlockFragmentActivity {
 		_histogramView2 = (HistogramView)findViewById(R.id.histogram2);
 
 		_sonar = null;
-		if (Intent.ACTION_VIEW.equals(getIntent().getAction())) {
-			Uri url = getIntent().getData();
+		if (true /*Intent.ACTION_VIEW.equals(getIntent().getAction())*/) {
+			Uri url = Uri.parse("file:///storage/emulated/0/Pictures/Sonar/IMGS0007.sonar");//getIntent().getData();
 			if (url != null) {
 				try {
+					Log.i(TAG, "Opening sonar dump: " + url);
 					_sonar = new StreamReader(new FileInputStream(url.getPath()));
 				}
 				catch (FileNotFoundException e) {
@@ -106,12 +108,12 @@ public class MainActivity extends SherlockFragmentActivity {
 		}
 
 		if (_sonar == null) {
-			_sonar = new Sonar(this);
+			//_sonar = new Sonar(this);
 		}
 		
 		if (_sonogramSurface != null) {
 			_sonar.setController(_sonogramSurface);
-			_sonar.setFilter(_sonogramSurface);
+			_sonar.setFilter(new CompositeFilter(_sonogramSurface, new FramerateCounter()));
 			
 			// Scale the surface to avoid rendering the full resolution
 			DisplayMetrics dm = new DisplayMetrics();
@@ -128,17 +130,18 @@ public class MainActivity extends SherlockFragmentActivity {
 		}
 		else if (_sonogramView != null) {
 			_sonar.setController(_sonogramView);
-			_sonar.setFilter(new CompositeFilter(new SonogramFilter(Sonar.OPERATOR)/*, new AverageFilter()*/, _sonogramView));
+			_sonar.setFilter(new CompositeFilter(new SonogramFilter(Sonar.OPERATOR)/*, new AverageFilter()*/, _sonogramView, new FramerateCounter()));
 		}
 		else if (_histogramView2 != null) {
 			_sonar.setController(new CompositeSonarController(_histogramView, _histogramView2));
 			_sonar.setFilter(new CompositeFilter(
 				new CompositeFilter(new MatchedFilter(Sonar.OPERATOR, 2, 0), new AverageFilter(), _histogramView),
-				new CompositeFilter(new MatchedFilter(Sonar.OPERATOR, 2, 1), new AverageFilter(), _histogramView2)));
+				new CompositeFilter(new MatchedFilter(Sonar.OPERATOR, 2, 1), new AverageFilter(), _histogramView2), 
+				new FramerateCounter()));
 		}
 		else if (_histogramView != null) {
 			_sonar.setController(_histogramView);
-			_sonar.setFilter(new CompositeFilter(new MatchedFilter(Sonar.OPERATOR), new AverageFilter(), _histogramView));
+			_sonar.setFilter(new CompositeFilter(new MatchedFilter(Sonar.OPERATOR), new AverageFilter(), _histogramView, new FramerateCounter()));
 			//_histogramView.setZoom(3);
 		}
 		

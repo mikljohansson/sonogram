@@ -84,7 +84,7 @@ public class Sonar implements ISonar {
 	
 	@Override
 	public void setFilter(ISignalFilter filter) {
-		_filter = new CompositeFilter(new AudioSync(), filter, new FramerateCounter());
+		_filter = new CompositeFilter(new AudioSync(), filter);
 	}
 	
 	@Override

@@ -83,13 +83,13 @@ public class SonogramView extends BufferedView implements ISonarController, ISig
 		    // Draw the sonogram
 	    	final int[] pixels = _pixels;
 	    	final float factor = 255f / (float)Math.log(item.maxvalue + 1);
-		    //final float factor = 255f / max;
+		    //final float factor = 255f / item.maxvalue;
 	    	final float[] output = item.output;
 		    
 		    for (; it < last; it++) {
 		    	// Scale the value logarithmically into the maximum height
 		    	int value = (int)(factor * Math.log(Math.abs(output[it]) + 1));
-		    	//int value = factor * Math.abs(values[i]);
+		    	//int value = (int)(factor * Math.abs(output[it]));
 		    	pixels[it] = 0xff000000 | (value << 16) | (value << 8) | value;
 		    }
 		}
