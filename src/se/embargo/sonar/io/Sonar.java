@@ -76,7 +76,7 @@ public class Sonar implements ISonar {
 		_stereo = stereo;
 		
 		if (_stereo) {
-			_resolution = new Rect(0, 0, SAMPLES_LENGTH, SAMPLES_LENGTH);
+			_resolution = new Rect(0, 0, SAMPLES_LENGTH * 2, SAMPLES_LENGTH);
 		}
 		else {
 			_resolution = new Rect(0, 0, SAMPLES_LENGTH, 1);

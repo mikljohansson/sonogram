@@ -16,8 +16,6 @@ public class SonogramFilter implements ISignalFilter {
 	 */
 	private static final float SPEED = 340.29f;
 	
-	private static final int STEP = 1;
-	
 	private final float[] _operator;
 	private final FilterBody _filter = new FilterBody();
 	private final ReduceBody _reduce = new ReduceBody();
@@ -75,23 +73,21 @@ public class SonogramFilter implements ISignalFilter {
 			
 			// Number of samples per pixel on x/y axes
 			final float xstep = (float)item.window.width() / (float)item.canvas.width(),
-					    ystep = xstep;//(float)item.window.height() / (float)item.canvas.height();
+					    ystep = (float)item.window.height() / (float)item.canvas.height();
 			
 			// Number of samples between microphones
 			final float baseline = item.samplerate / SPEED * BASELINE;
 			
-			// Middle of canvas in pixels
-			final float xmid = (float)item.canvas.width() / 2;
-			
-			// For each output row in sonogram
-			for (; y < ylast; y += STEP) {
-				// Distance in samples to bottom of canvas
-				final float ys = ((float)item.canvas.height() - y) * ystep, ysqr = ys * ys;
+			// For each line in sonogram
+			for (; y < ylast; y++) {
+				// Distance in samples to top of sonar resolution
+				final float ys = ((float)item.canvas.height() - y) * ystep + item.window.top + (item.resolution.height() - item.window.bottom), 
+						    ysqr = ys * ys;
 				
-				// For each column of current row
-				for (int x = 0, xlast = item.canvas.width(), oi = y * item.canvas.width(); x < xlast; x += STEP, oi += STEP) {
+				// For each pixel of current line
+				for (int x = 0, xlast = item.canvas.width(), oi = y * item.canvas.width(); x < xlast; x++, oi++) {
 					// Distance in samples from mic-A (middle-bottom of canvas)
-					final float xsa = Math.abs(xmid - x) * xstep;
+					final float xsa = Math.abs(((float)item.canvas.width() - x) * xstep + item.window.left - item.resolution.width() / 2.0f);
 					final float ha1 = FloatMath.sqrt(xsa * xsa + ysqr);
 					final float ra2 = ha1 - (int)ha1, ra1 = 1.0f - ra2;
 
@@ -102,18 +98,27 @@ public class SonogramFilter implements ISignalFilter {
 
 					// Reduce the A/B channels 
 					float acc = 0;
-					for (int sai = (int)ha1 * 2, sbi = (int)hb1 * 2 + 1, sal = sai + (int)Math.ceil(xstep); sai < sal; sai++, sbi++) { 
-						float asample = matched[sai] * ra1 + matched[sai + 2] * ra2;
-						float bsample = matched[sbi] * rb1 + matched[sbi + 2] * rb2;
+					for (int sai = (int)ha1 * 2, sbi = (int)hb1 * 2 + 1, sal = sai + (int)Math.ceil(xstep), ix = 0, ixl = (int)Math.ceil(xstep) - 1; sai < sal; sai++, sbi++, ix++) { 
+						float asample;
+						float bsample;
+						
+						if (ix == 0) {						
+							asample = matched[sai] * ra1 + matched[sai + 2] * ra2;
+							bsample = matched[sbi] * rb1 + matched[sbi + 2] * rb2;
+						}
+						else if (ix == ixl) {
+							asample = matched[sai] * (1.0f - ra1) + matched[sai + 2] * (1.0f - ra2);
+							bsample = matched[sbi] * (1.0f - rb1) + matched[sbi + 2] * (1.0f - rb2);
+ 						}
+						else {
+							asample = matched[sai] + matched[sai + 2];
+							bsample = matched[sbi] + matched[sbi + 2];
+						}
+						
 						acc += asample * bsample;
 					}
 					
-					for (int sy = oi, syl = oi + xlast * STEP; sy < syl; sy += xlast) {
-						for (int sx = sy, sxl = Math.min(sx + STEP, output.length); sx < sxl; sx++) {
-							output[sx] = acc;
-						}
-					}
-					
+					output[oi] = acc;
 					maxvalue = Math.max(maxvalue, acc);
 				}
 			}
