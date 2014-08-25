@@ -3,13 +3,12 @@ package se.embargo.sonar.dsp;
 import se.embargo.core.concurrent.IForBody;
 import se.embargo.core.concurrent.Parallel;
 import android.annotation.SuppressLint;
-import android.util.FloatMath;
 
 public class SonogramFilter implements ISignalFilter {
 	/**
 	 * Distance between microphones in meters
 	 */
-	private static final float BASELINE = 0.14f;
+	private static final float BASELINE = 0.12f;
 	
 	/**
 	 * Speed of sound in meters/second
@@ -76,7 +75,7 @@ public class SonogramFilter implements ISignalFilter {
 					    ystep = (float)item.window.height() / (float)item.canvas.height();
 			final int xstepi = (int)Math.ceil(xstep), ixl = xstepi - 1;
 			final float xadj = item.window.left - item.resolution.width() / 2,
-						yadj = item.window.top + (item.resolution.height() - item.window.bottom);
+						yadj = item.resolution.bottom - item.window.bottom;
 			
 			// Number of samples between microphones
 			final float baseline = item.samplerate / SPEED * BASELINE;

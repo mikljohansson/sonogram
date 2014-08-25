@@ -131,6 +131,7 @@ public class MainActivity extends SherlockFragmentActivity {
 		else if (_sonogramView != null) {
 			_sonar.setController(_sonogramView);
 			_sonar.setFilter(new CompositeFilter(new SonogramFilter(Sonar.OPERATOR)/*, new AverageFilter()*/, _sonogramView, new FramerateCounter()));
+			_sonogramView.setZoom(3);
 		}
 		else if (_histogramView2 != null) {
 			_sonar.setController(new CompositeSonarController(_histogramView, _histogramView2));
@@ -150,7 +151,7 @@ public class MainActivity extends SherlockFragmentActivity {
 			final ImageButton cameraModeButton = (ImageButton)findViewById(R.id.cameraModeButton);
 			cameraModeButton.setOnClickListener(new CameraModeButtonListener());
 			_cameraState.addChangeListener(new RecordStateListener());
-			_cameraState.setValue(RecordState.Picture);
+			_cameraState.setValue(_cameraState.getValue());
 		}
 	}
 	
