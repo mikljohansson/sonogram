@@ -25,6 +25,7 @@ import se.embargo.sonar.io.StreamWriter;
 import se.embargo.sonar.shader.SonogramSurface;
 import se.embargo.sonar.widget.HistogramView;
 import se.embargo.sonar.widget.SonogramView;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
@@ -37,6 +38,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.ImageButton;
+import android.widget.Toast;
 
 import com.actionbarsherlock.app.SherlockFragmentActivity;
 import com.actionbarsherlock.view.Menu;
@@ -73,7 +75,7 @@ public class MainActivity extends SherlockFragmentActivity {
 	/**
 	 * Current camera state. 
 	 */
-	private IObservableValue<RecordState> _cameraState = new WritableValue<RecordState>(RecordState.Video);
+	private IObservableValue<RecordState> _cameraState = new WritableValue<RecordState>(RecordState.Picture);
 	private IObservableValue<Float> _baseline;
 	
 	@Override
@@ -100,9 +102,9 @@ public class MainActivity extends SherlockFragmentActivity {
 		_histogramView2 = (HistogramView)findViewById(R.id.histogram2);
 
 		_sonar = null;
-		if (true/*Intent.ACTION_VIEW.equals(getIntent().getAction())*/) {
-			//Uri url = getIntent().getData();
-			Uri url = Uri.parse("file:///storage/emulated/0/Pictures/Sonar/IMGS0009.sonar");
+		if (Intent.ACTION_VIEW.equals(getIntent().getAction())) {
+			Uri url = getIntent().getData();
+			//Uri url = Uri.parse("file:///storage/emulated/0/Pictures/Sonar/IMGS0009.sonar");
 			if (url != null) {
 				try {
 					Log.i(TAG, "Opening sonar dump: " + url);
@@ -149,7 +151,6 @@ public class MainActivity extends SherlockFragmentActivity {
 		else if (_histogramView != null) {
 			_sonar.setController(_histogramView);
 			_sonar.setFilter(new CompositeFilter(new MatchedFilter(), new AverageFilter(), _histogramView, new FramerateCounter()));
-			//_histogramView.setZoom(3);
 		}
 		
 		// Connect the recording mode button
@@ -211,8 +212,6 @@ public class MainActivity extends SherlockFragmentActivity {
 	}
 
 	private class RecordStateListener implements IChangeListener<RecordState> {
-		private View.OnTouchListener _captureListener;
-
 		@Override
 		public void handleChange(ChangeEvent<RecordState> event) {
 			final ImageButton takePhotoButton = (ImageButton)findViewById(R.id.takePhotoButton);
@@ -225,9 +224,8 @@ public class MainActivity extends SherlockFragmentActivity {
 					//_videoRecorder.abort();
 					
 					// Prepare to capture still images
-					//_captureListener = new TakePhotoListener();
 					takePhotoButton.setImageResource(R.drawable.ic_button_camera);
-					//takePhotoButton.setOnTouchListener(_captureListener);
+					takePhotoButton.setOnClickListener(new TakePhotoListener());
 					cameraModeButton.setImageResource(R.drawable.ic_button_video);
 					//videoProgressLayout.setVisibility(View.GONE);
 					break;
@@ -238,9 +236,8 @@ public class MainActivity extends SherlockFragmentActivity {
 					//_videoRecorder.abort();
 					
 					// Prepare to record video
-					_captureListener = new RecordButtonListener();
 					takePhotoButton.setImageResource(R.drawable.ic_button_video);
-					takePhotoButton.setOnTouchListener(_captureListener);
+					takePhotoButton.setOnTouchListener(new RecordButtonListener());
 					cameraModeButton.setImageResource(R.drawable.ic_button_camera);
 					//videoProgressLayout.setVisibility(View.VISIBLE);
 					break;
@@ -256,7 +253,46 @@ public class MainActivity extends SherlockFragmentActivity {
 		}
 	}
 	
-	private class RecordButtonListener implements View.OnTouchListener {
+	private class TakePhotoListener implements View.OnClickListener, StreamWriter.IStreamListener {
+		private ISignalFilter _prevFilter;
+		private StreamWriter _outputFilter;
+
+		@Override
+		public void onClick(View v) {
+			OutputStream os;
+			try {
+				os = new FileOutputStream(createOutputFile(null, "sonar"));
+			}
+			catch (FileNotFoundException e) {
+				Log.e(TAG, e.getMessage(), e);
+				return;
+			}
+			
+			if (_outputFilter != null) {
+				_outputFilter.close();
+			}
+			
+			_prevFilter = _sonar.getFilter();
+			_outputFilter = new StreamWriter(os, 1);
+			_outputFilter.setListener(this);
+			_sonar.setFilter(new CompositeFilter(_outputFilter, _prevFilter));
+		}
+		
+		@Override
+		public void onClosed() {
+			runOnUiThread(new Runnable() {
+				@Override
+				public void run() {
+					_sonar.setFilter(_prevFilter);
+					_outputFilter = null;
+					_prevFilter = null;
+					Toast.makeText(MainActivity.this, R.string.saved_sonar_dump, Toast.LENGTH_SHORT).show();
+				}
+			});
+		}
+	}
+	
+	private class RecordButtonListener implements View.OnTouchListener, StreamWriter.IStreamListener {
 		private static final long PRESS_DELAY = 350;
 		private long _prevEvent = 0;
 		private ISignalFilter _prevFilter;
@@ -309,8 +345,13 @@ public class MainActivity extends SherlockFragmentActivity {
 				return;
 			}
 			
+			if (_outputFilter != null) {
+				_outputFilter.close();
+			}
+			
 			_prevFilter = _sonar.getFilter();
 			_outputFilter = new StreamWriter(os);
+			_outputFilter.setListener(this);
 			_sonar.setFilter(new CompositeFilter(_outputFilter, _prevFilter));
 			_cameraState.setValue(RecordState.Recording);
 		}
@@ -318,11 +359,18 @@ public class MainActivity extends SherlockFragmentActivity {
 		private void stopRecording() {
 			if (_outputFilter != null) {
 				_outputFilter.close();
-				_outputFilter = null;
-				_sonar.setFilter(_prevFilter);
 			}
 			
 			_cameraState.setValue(RecordState.Video);
+		}
+
+		@Override
+		public void onClosed() {
+			_sonar.setFilter(_prevFilter);
+			_outputFilter = null;
+			_prevFilter = null;
+			_cameraState.setValue(RecordState.Video);
+			Toast.makeText(MainActivity.this, R.string.saved_sonar_dump, Toast.LENGTH_SHORT).show();
 		}
 	}
 	
