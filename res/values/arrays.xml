@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<string name="pref_visualization_default">sonogram</string>
+    <string-array name="pref_visualization_labels">
+        <item>Sonogram</item>
+		<item>Histogram</item>
+        <item>Dual Histogram</item>
+	</string-array>
+	<string-array name="pref_visualization_values">
+	    <item>sonogram</item>
+	    <item>histogram</item>
+	    <item>dual_histogram</item>
+	</string-array>
+</resources>

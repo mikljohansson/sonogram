@@ -52,7 +52,7 @@ public abstract class BufferedView extends View {
 		_dataResolution = new Rect(resolution);
 
 		Rect canvas = getCanvas();
-		int width = (int)((float)resolution.height() * ((float)canvas.width() / (float)canvas.height()));
+		int width = Math.min((int)((float)resolution.height() * ((float)canvas.width() / (float)canvas.height())), resolution.width());
 		_dataWindow = new Rect(resolution.centerX() - width / 2, resolution.top, resolution.centerX() + width / 2, resolution.bottom);
 		setWindow(_dataWindow);
 		

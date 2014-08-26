@@ -3,15 +3,13 @@ package se.embargo.sonar.io;
 import se.embargo.sonar.dsp.ISignalFilter;
 
 public interface ISonar {
+	public abstract void init(ISonarController controller, ISignalFilter filterS);
 
-	public abstract void setController(ISonarController controller);
-
+	public abstract ISonarController getController();
+	
 	public abstract ISignalFilter getFilter();
 	
-	public abstract void setFilter(ISignalFilter filter);
-
 	public abstract void start();
 
 	public abstract void stop();
-
 }

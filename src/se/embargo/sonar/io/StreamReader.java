@@ -23,7 +23,7 @@ public class StreamReader implements ISonar {
 	private final FileInputStream _fis;
 	private ISonarController _controller;
 	private ISignalFilter _filter;
-	private SonarWorker _inputworker;
+	private final SonarWorker _inputworker = new AudioInputWorker();
 	
 	private static ExecutorService _threadpool = new ThreadPoolExecutor(
 		Parallel.getNumberOfCores(), Parallel.getNumberOfCores(), 0, TimeUnit.MILLISECONDS, 
@@ -36,39 +36,46 @@ public class StreamReader implements ISonar {
 	}
 
 	@Override
-	public void setController(ISonarController controller) {
+	public synchronized void init(ISonarController controller, ISignalFilter filter) {
 		_controller = controller;
-	}
-
-	@Override
-	public ISignalFilter getFilter() {
-		return _filter;
-	}
-
-	@Override
-	public void setFilter(ISignalFilter filter) {
 		_filter = filter;
 	}
 
 	@Override
-	public void start() {
-		_inputworker = new AudioInputWorker();
+	public synchronized ISonarController getController() {
+		return _controller;
+	}
+	
+	@Override
+	public synchronized ISignalFilter getFilter() {
+		return _filter;
+	}
+
+	@Override
+	public synchronized void start() {
 		_inputworker.start();
 	}
 
 	@Override
-	public void stop() {
+	public synchronized void stop() {
 		_inputworker.stop();
 	}
 	
 	private class FilterTask implements Runnable {
 		public final ISignalFilter.Item item;
+		private ISonarController _controller;
+		private ISignalFilter _filter;
 		
 		public FilterTask(float samplerate, int samplecount) {
 			item = new ISignalFilter.Item(samplerate, samplecount);
 		}
 		
 		public void init(float[] operator, short[] samples, Rect resolution) {
+			synchronized (StreamReader.this) {
+				this._controller = StreamReader.this._controller;
+				this._filter = StreamReader.this._filter;
+			}
+			
 			item.init(operator, samples, _controller.getSonarWindow(), _controller.getSonarCanvas(), resolution);
 		}
 

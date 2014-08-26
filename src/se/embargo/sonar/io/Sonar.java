@@ -43,8 +43,8 @@ public class Sonar implements ISonar {
 		(float)SAMPLERATE / 4);
 	
 	private ISonarController _controller;
-	private SonarWorker _inputworker, _outputworker;
-	private Rect _resolution;
+	private final SonarWorker _inputworker = new AudioInputWorker(), _outputworker = new AudioOutputWorker();
+	private final Rect _resolution = new Rect(0, 0, SAMPLES_LENGTH * 2, SAMPLES_LENGTH);
 	
 	private static ExecutorService _threadpool = new ThreadPoolExecutor(
 		Parallel.getNumberOfCores(), Parallel.getNumberOfCores(), 0, TimeUnit.MILLISECONDS, 
@@ -67,49 +67,52 @@ public class Sonar implements ISonar {
 	 */
 	private AtomicInteger _outputDelay = new AtomicInteger(0);
 	
-	public Sonar(Context context) {
-		_resolution = new Rect(0, 0, SAMPLES_LENGTH * 2, SAMPLES_LENGTH);
-	}
+	public Sonar(Context context) {}
 	
 	@Override
-	public void setController(ISonarController controller) {
+	public synchronized void init(ISonarController controller, ISignalFilter filter) {
 		_controller = controller;
 		_controller.setSonarResolution(_resolution);
+		_filter = new CompositeFilter(new AudioSync(), filter);
 	}
 
 	@Override
-	public ISignalFilter getFilter() {
+	public synchronized ISonarController getController() {
+		return _controller;
+	}
+
+	@Override
+	public synchronized ISignalFilter getFilter() {
 		return _filter;
 	}
 	
 	@Override
-	public void setFilter(ISignalFilter filter) {
-		_filter = new CompositeFilter(new AudioSync(), filter);
-	}
-	
-	@Override
-	public void start() {
-		_inputworker = new AudioInputWorker();
+	public synchronized void start() {
 		_inputworker.start();
-		
-		_outputworker = new AudioOutputWorker();
 		_outputworker.start();
 	}
 	
 	@Override
-	public void stop() {
+	public synchronized void stop() {
 		_inputworker.stop();
 		_outputworker.stop();
 	}
 	
 	private class FilterTask implements Runnable {
 		public final ISignalFilter.Item item;
+		private ISonarController _controller;
+		private ISignalFilter _filter;
 		
 		public FilterTask(int samplecount) {
 			item = new ISignalFilter.Item(SAMPLERATE, samplecount);
 		}
 		
 		public void init(short[] samples) {
+			synchronized (Sonar.this) {
+				this._controller = Sonar.this._controller;
+				this._filter = Sonar.this._filter;
+			}
+			
 			item.init(_operator, samples, _controller.getSonarWindow(), _controller.getSonarCanvas(), _resolution);
 		}
 

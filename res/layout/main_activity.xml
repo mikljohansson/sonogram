@@ -12,14 +12,16 @@
 		android:layout_weight="1">
 	
 	    <RelativeLayout
-	        android:id="@+id/cameraPreviewLayout"
+	        android:id="@+id/visualizationLayout"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_centerInParent="true"
             android:background="#00ff00">
-	        
-	        <include layout="@layout/dsp_sonogram"/>
 
+	        <include layout="@layout/sonogram"/>
+	        <include layout="@layout/histogram"/>
+	        <include layout="@layout/dual_histogram"/>
+	        
 		    <include layout="@layout/detailed_preferences"/>
 		</RelativeLayout>
 	</RelativeLayout>

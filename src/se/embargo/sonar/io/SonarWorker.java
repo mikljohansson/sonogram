@@ -1,17 +1,19 @@
 package se.embargo.sonar.io;
 
 abstract class SonarWorker implements Runnable {
-	private final Thread _thread = new Thread(this);
-	protected volatile boolean _stop = false;
+	private Thread _thread;
+	protected volatile boolean _stop = true;
 	
 	public void start() {
+		_stop = false;
+		_thread = new Thread(this);
 		_thread.start();
 	}
 	
 	public void stop() {
 		_stop = true;
 		
-		for (long ts = System.currentTimeMillis(); System.currentTimeMillis() < ts + 500 && _thread.isAlive(); ) {
+		for (long ts = System.currentTimeMillis(); System.currentTimeMillis() < ts + 500 && _thread != null && _thread.isAlive(); ) {
 			_thread.interrupt();
 			
 			try {
@@ -21,5 +23,7 @@ abstract class SonarWorker implements Runnable {
 				break;
 			}
 		}
+		
+		_thread = null;
 	}
 }

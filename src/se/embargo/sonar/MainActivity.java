@@ -11,6 +11,7 @@ import se.embargo.core.databinding.observable.ChangeEvent;
 import se.embargo.core.databinding.observable.IChangeListener;
 import se.embargo.core.databinding.observable.IObservableValue;
 import se.embargo.core.databinding.observable.WritableValue;
+import se.embargo.core.widget.ListPreferenceDialog;
 import se.embargo.core.widget.SeekBarDialog;
 import se.embargo.sonar.dsp.AverageFilter;
 import se.embargo.sonar.dsp.CompositeFilter;
@@ -22,7 +23,6 @@ import se.embargo.sonar.io.ISonar;
 import se.embargo.sonar.io.Sonar;
 import se.embargo.sonar.io.StreamReader;
 import se.embargo.sonar.io.StreamWriter;
-import se.embargo.sonar.shader.SonogramSurface;
 import se.embargo.sonar.widget.HistogramView;
 import se.embargo.sonar.widget.SonogramView;
 import android.content.Intent;
@@ -31,7 +31,6 @@ import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
@@ -52,6 +51,7 @@ public class MainActivity extends SherlockFragmentActivity {
 	private static final String PREF_IMAGECOUNT = "imagecount";
 	private static final String PREF_BASELINE = "baseline";
 	private static final float PREF_BASELINE_DEFAULT = 0.12f;
+	private static final String PREF_VISUALIZATION = "visualization";
 	
 	private static final String DIRECTORY = "Sonar";
 	private static final String FILENAME_PATTERN = "IMGS%04d";
@@ -61,10 +61,12 @@ public class MainActivity extends SherlockFragmentActivity {
 	 */
 	private SharedPreferences _prefs;
 	
-	private SonogramSurface _sonogramSurface;
-	private SonogramView _sonogramView;
-	private HistogramView _histogramView;
-	private HistogramView _histogramView2;
+	/**
+	 * The listener needs to be kept alive since SharedPrefernces only keeps a weak reference to it
+	 */
+	private PreferencesListener _prefsListener = new PreferencesListener();
+	
+	private View _sonogramLayout, _histogramLayout, _dualHistogramLayout;
 	private ISonar _sonar;
 	
 	/**
@@ -96,10 +98,9 @@ public class MainActivity extends SherlockFragmentActivity {
 		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 		
 		setContentView(R.layout.main_activity);
-		_sonogramSurface = (SonogramSurface)findViewById(R.id.sonogram_surface);
-		_sonogramView = (SonogramView)findViewById(R.id.sonogram);
-		_histogramView = (HistogramView)findViewById(R.id.histogram);
-		_histogramView2 = (HistogramView)findViewById(R.id.histogram2);
+		_sonogramLayout = findViewById(R.id.sonogramLayout);
+		_histogramLayout = findViewById(R.id.histogramLayout);
+		_dualHistogramLayout = findViewById(R.id.dualHistogramLayout);
 
 		_sonar = null;
 		if (Intent.ACTION_VIEW.equals(getIntent().getAction())) {
@@ -120,38 +121,7 @@ public class MainActivity extends SherlockFragmentActivity {
 			_sonar = new Sonar(this);
 		}
 		
-		if (_sonogramSurface != null) {
-			_sonar.setController(_sonogramSurface);
-			_sonar.setFilter(new CompositeFilter(_sonogramSurface, new FramerateCounter()));
-			
-			// Scale the surface to avoid rendering the full resolution
-			DisplayMetrics dm = new DisplayMetrics();
-			getWindowManager().getDefaultDisplay().getMetrics(dm);
-			
-			float scale = 0.25f;
-			int width = dm.widthPixels, height = (int) dm.heightPixels;
-			int scaledwidth = (int)(width * scale);
-			int scaledheight = (int)(height * scale);
-
-			if (scaledwidth != width || scaledheight != height) {
-				_sonogramSurface.getHolder().setFixedSize(scaledwidth, scaledheight);		
-			}
-		}
-		else if (_sonogramView != null) {
-			_sonar.setController(_sonogramView);
-			_sonar.setFilter(new CompositeFilter(new SonogramFilter(_baseline)/*, new AverageFilter()*/, _sonogramView, new FramerateCounter()));
-		}
-		else if (_histogramView2 != null) {
-			_sonar.setController(new CompositeSonarController(_histogramView, _histogramView2));
-			_sonar.setFilter(new CompositeFilter(
-				new CompositeFilter(new MatchedFilter(0), new AverageFilter(), _histogramView),
-				new CompositeFilter(new MatchedFilter(1), new AverageFilter(), _histogramView2), 
-				new FramerateCounter()));
-		}
-		else if (_histogramView != null) {
-			_sonar.setController(_histogramView);
-			_sonar.setFilter(new CompositeFilter(new MatchedFilter(), new AverageFilter(), _histogramView, new FramerateCounter()));
-		}
+		_prefsListener.onSharedPreferenceChanged(_prefs, PREF_VISUALIZATION);
 		
 		// Connect the recording mode button
 		{
@@ -166,11 +136,20 @@ public class MainActivity extends SherlockFragmentActivity {
 			final ImageButton focusButton = (ImageButton)findViewById(R.id.focusButton);
 			focusButton.setOnClickListener(new FocusButtonListener());
 		}
+		
+		// Connect the visualization button
+		{
+			final ImageButton button = (ImageButton)findViewById(R.id.visualizationButton);
+			button.setOnClickListener(new ListPreferenceDialog(
+				this, _prefs, PREF_VISUALIZATION, getResources().getString(R.string.pref_visualization_default),
+				R.string.menu_option_visualization, R.array.pref_visualization_labels, R.array.pref_visualization_values));
+		}
 	}
 	
 	@Override
 	protected void onResume() {
 		super.onResume();
+		_prefs.registerOnSharedPreferenceChangeListener(_prefsListener);
 		_sonar.start();
 	}
 	
@@ -178,6 +157,7 @@ public class MainActivity extends SherlockFragmentActivity {
 	protected void onPause() {
 		super.onPause();
 		_sonar.stop();
+		_prefs.unregisterOnSharedPreferenceChangeListener(_prefsListener);
 	}
 
 	@Override
@@ -275,7 +255,7 @@ public class MainActivity extends SherlockFragmentActivity {
 			_prevFilter = _sonar.getFilter();
 			_outputFilter = new StreamWriter(os, 1);
 			_outputFilter.setListener(this);
-			_sonar.setFilter(new CompositeFilter(_outputFilter, _prevFilter));
+			_sonar.init(_sonar.getController(), new CompositeFilter(_outputFilter, _prevFilter));
 		}
 		
 		@Override
@@ -283,7 +263,7 @@ public class MainActivity extends SherlockFragmentActivity {
 			runOnUiThread(new Runnable() {
 				@Override
 				public void run() {
-					_sonar.setFilter(_prevFilter);
+					_sonar.init(_sonar.getController(), _prevFilter);
 					_outputFilter = null;
 					_prevFilter = null;
 					Toast.makeText(MainActivity.this, R.string.saved_sonar_dump, Toast.LENGTH_SHORT).show();
@@ -352,7 +332,7 @@ public class MainActivity extends SherlockFragmentActivity {
 			_prevFilter = _sonar.getFilter();
 			_outputFilter = new StreamWriter(os);
 			_outputFilter.setListener(this);
-			_sonar.setFilter(new CompositeFilter(_outputFilter, _prevFilter));
+			_sonar.init(_sonar.getController(), new CompositeFilter(_outputFilter, _prevFilter));
 			_cameraState.setValue(RecordState.Recording);
 		}
 		
@@ -366,14 +346,79 @@ public class MainActivity extends SherlockFragmentActivity {
 
 		@Override
 		public void onClosed() {
-			_sonar.setFilter(_prevFilter);
-			_outputFilter = null;
-			_prevFilter = null;
-			_cameraState.setValue(RecordState.Video);
-			Toast.makeText(MainActivity.this, R.string.saved_sonar_dump, Toast.LENGTH_SHORT).show();
+			runOnUiThread(new Runnable() {
+				@Override
+				public void run() {
+					_sonar.init(_sonar.getController(), _prevFilter);
+					_outputFilter = null;
+					_prevFilter = null;
+					_cameraState.setValue(RecordState.Video);
+					Toast.makeText(MainActivity.this, R.string.saved_sonar_dump, Toast.LENGTH_SHORT).show();
+				}
+			});
 		}
 	}
 	
+	/**
+	 * Listens for preference changes and applies updates
+	 */
+	private class PreferencesListener implements SharedPreferences.OnSharedPreferenceChangeListener {
+		@Override
+		public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {
+			if (PREF_VISUALIZATION.equals(key)) {
+				String value = prefs.getString(PREF_VISUALIZATION, getString(R.string.pref_visualization_default));
+				_sonogramLayout.setVisibility(View.GONE);
+				_histogramLayout.setVisibility(View.GONE);
+				_dualHistogramLayout.setVisibility(View.GONE);
+				
+				if ("histogram".equals(value)) {
+					HistogramView histogram = (HistogramView)_histogramLayout.findViewById(R.id.histogram);
+					_sonar.init(histogram, new CompositeFilter(new MatchedFilter(), new AverageFilter(), histogram, new FramerateCounter()));
+					_histogramLayout.setVisibility(View.VISIBLE);
+				}
+				else if ("dual_histogram".equals(value)) {
+					HistogramView histogram = (HistogramView)_dualHistogramLayout.findViewById(R.id.histogram);
+					HistogramView histogram2 = (HistogramView)_dualHistogramLayout.findViewById(R.id.histogram2);
+					
+					_sonar.init(
+						new CompositeSonarController(histogram, histogram2),
+						new CompositeFilter(
+							new CompositeFilter(new MatchedFilter(0), new AverageFilter(), histogram),
+							new CompositeFilter(new MatchedFilter(1), new AverageFilter(), histogram2), 
+							new FramerateCounter()));
+
+					_dualHistogramLayout.setVisibility(View.VISIBLE);
+				}
+				else {
+					SonogramView sonogram = (SonogramView)_sonogramLayout.findViewById(R.id.sonogram);
+					_sonar.init(sonogram, new CompositeFilter(new SonogramFilter(_baseline)/*, new AverageFilter()*/, sonogram, new FramerateCounter()));
+					_sonogramLayout.setVisibility(View.VISIBLE);
+				}
+
+				/*
+				if (_sonogramSurface != null) {
+					
+					_sonar.setController(_sonogramSurface);
+					_sonar.setFilter(new CompositeFilter(_sonogramSurface, new FramerateCounter()));
+					
+					// Scale the surface to avoid rendering the full resolution
+					DisplayMetrics dm = new DisplayMetrics();
+					getWindowManager().getDefaultDisplay().getMetrics(dm);
+					
+					float scale = 0.25f;
+					int width = dm.widthPixels, height = (int) dm.heightPixels;
+					int scaledwidth = (int)(width * scale);
+					int scaledheight = (int)(height * scale);
+
+					if (scaledwidth != width || scaledheight != height) {
+						_sonogramSurface.getHolder().setFixedSize(scaledwidth, scaledheight);		
+					}
+				}
+				*/
+			}
+		}
+	}
+	 	
 	/**
 	 * @return	The directory where images are stored
 	 */
