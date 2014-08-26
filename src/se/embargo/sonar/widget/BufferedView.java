@@ -72,7 +72,13 @@ public abstract class BufferedView extends View {
 	
 	protected synchronized void setWindow(Rect window) {
 		_zoomWindow = window;
-		invalidateCanvas();
+		
+		post(new Runnable() {
+			@Override
+			public void run() {
+				invalidateCanvas();
+			}
+		});
 	}
 	
 	/**

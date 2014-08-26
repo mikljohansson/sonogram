@@ -23,6 +23,7 @@ public class StreamReader implements ISonar {
 	private final FileInputStream _fis;
 	private ISonarController _controller;
 	private ISignalFilter _filter;
+	private Rect _resolution;
 	private final SonarWorker _inputworker = new AudioInputWorker();
 	
 	private static ExecutorService _threadpool = new ThreadPoolExecutor(
@@ -39,6 +40,10 @@ public class StreamReader implements ISonar {
 	public synchronized void init(ISonarController controller, ISignalFilter filter) {
 		_controller = controller;
 		_filter = filter;
+		
+		if (_resolution != null) {
+			_controller.setSonarResolution(_resolution);
+		}
 	}
 
 	@Override
@@ -91,7 +96,7 @@ public class StreamReader implements ISonar {
 	
 	private class AudioInputWorker extends SonarWorker {
 		private DataInputStream _dis;
-		private int _samplecount, _width, _heigth;
+		private int _samplecount;
 		private float _samplerate;
 		private long _startPosition;
 		private float[] _operator;
@@ -107,9 +112,6 @@ public class StreamReader implements ISonar {
 				return;
 			}
 
-			Rect resolution = new Rect(0, 0, _width, _heigth);
-			_controller.setSonarResolution(resolution);
-			
 			short[] samples = new short[_samplecount];
 			try {
 				while (!_stop) {
@@ -134,7 +136,7 @@ public class StreamReader implements ISonar {
 					}
 				
 					// Perform the filter processing on the thread pool
-					task.init(_operator, samples, resolution);
+					task.init(_operator, samples, _resolution);
 					_threadpool.submit(task);
 					
 					// Sleep for a while
@@ -166,8 +168,10 @@ public class StreamReader implements ISonar {
 			
 			_samplerate = _dis.readFloat();
 			_samplecount = _dis.readInt();
-			_width = _dis.readInt();
-			_heigth = _dis.readInt();
+			int width = _dis.readInt();
+			int heigth = _dis.readInt();
+			_resolution = new Rect(0, 0, width, heigth);
+			_controller.setSonarResolution(_resolution);
 			
 			// Read the operator used for this item
 			int operatorlength = _dis.readInt();
