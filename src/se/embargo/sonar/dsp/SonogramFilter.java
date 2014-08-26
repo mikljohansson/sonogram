@@ -10,8 +10,6 @@ public class SonogramFilter implements ISignalFilter {
 	 * Speed of sound in meters/second
 	 */
 	private static final float SPEED = 340.29f;
-	
-	private final float[] _operator;
 
 	/**
 	 * Distance between microphones in meters
@@ -21,8 +19,7 @@ public class SonogramFilter implements ISignalFilter {
 	private final FilterBody _filter = new FilterBody();
 	private final ReduceBody _reduce = new ReduceBody();
 	
-	public SonogramFilter(float[] operator, IObservableValue<Float> baseline) {
-		_operator = operator;
+	public SonogramFilter(IObservableValue<Float> baseline) {
 		_baseline = baseline;
 	}
 
@@ -37,7 +34,7 @@ public class SonogramFilter implements ISignalFilter {
 		item.maxvalue = 0;
 		
 		// Convolve both channels
-		Parallel.forRange(_filter, item, 0, item.samples.length - _operator.length * 2);
+		Parallel.forRange(_filter, item, 0, item.samples.length - item.operator.length * 2);
 		
 		// Apply filter in parallel over output rows
 		Parallel.forRange(_reduce, item, 0, item.canvas.height());
@@ -47,7 +44,7 @@ public class SonogramFilter implements ISignalFilter {
 		@Override
 		@SuppressLint("FloatMath")
 		public void run(Item item, int i, int last) {
-			final float[] operator = _operator;
+			final float[] operator = item.operator;
 			final short[] samples = item.samples;
 			final float[] matched = item.matched;
 			

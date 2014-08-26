@@ -37,7 +37,7 @@ public class Sonar implements ISonar {
 	/**
 	 * Sonar pulse time series.
 	 */
-	public static final float[] OPERATOR = Signals.createLinearChirp(
+	private static final float[] OPERATOR = Signals.createLinearChirp(
 		SAMPLERATE, PULSEDURATION, 
 		(float)SAMPLERATE / 2 - SAMPLERATE / 4,
 		(float)SAMPLERATE / 4);
@@ -55,7 +55,7 @@ public class Sonar implements ISonar {
 	/**
 	 * Sonar pulse time series.
 	 */
-	private final float[] _pulse = OPERATOR;
+	private final float[] _operator = OPERATOR;
 	
 	/**
 	 * DSP filter to apply to samples
@@ -110,7 +110,7 @@ public class Sonar implements ISonar {
 		}
 		
 		public void init(short[] samples) {
-			item.init(samples, _controller.getSonarWindow(), _controller.getSonarCanvas(), _resolution);
+			item.init(_operator, samples, _controller.getSonarWindow(), _controller.getSonarCanvas(), _resolution);
 		}
 
 		@Override
@@ -127,7 +127,7 @@ public class Sonar implements ISonar {
 		@Override
 		public void run() {
 			int resolution = SAMPLES_LENGTH;
-			int samplecount = (resolution + _pulse.length) * 2;
+			int samplecount = (resolution + _operator.length) * 2;
 			int chunksize = resolution * 2;
 			int channel = AudioFormat.CHANNEL_IN_STEREO;
 			short[] samples;
@@ -183,8 +183,8 @@ public class Sonar implements ISonar {
 		public void run() {
 			int resolution = SAMPLES_LENGTH;
 			int position = 0;
-			short[] pulse = Signals.toShort(_pulse, PULSEAMPLITUDE);
-			short[] silence = new short[_pulse.length];
+			short[] pulse = Signals.toShort(_operator, PULSEAMPLITUDE);
+			short[] silence = new short[_operator.length];
 			
 			AudioTrack track = new AudioTrack(
 				AudioManager.STREAM_MUSIC, SAMPLERATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT, 
@@ -197,7 +197,7 @@ public class Sonar implements ISonar {
 				
 				int duration = resolution;
 				while (!_stop) {
-					if (position < _pulse.length) {
+					if (position < _operator.length) {
 						// Send the sonar pulse
 						position += track.write(pulse, position, pulse.length - position);
 					}
@@ -254,7 +254,7 @@ public class Sonar implements ISonar {
 		public void run() {
 			try {
 				final short[] samples = _samples;
-				final float[] operator = _pulse;
+				final float[] operator = _operator;
 				float maxval = 0, maxshort = Short.MAX_VALUE;
 				int maxpos = 0;
 				int step = 2;				

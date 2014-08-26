@@ -5,6 +5,7 @@ import android.graphics.Rect;
 public interface ISignalFilter {
 	public class Item {
 		public final float samplerate;
+		public float[] operator;
 		public final short[] samples;
 		public Rect window, canvas, resolution;
 		public float[] matched;
@@ -18,7 +19,8 @@ public interface ISignalFilter {
 			this.output = new float[0];
 		}
 		
-		public void init(short[] samples, Rect window, Rect canvas, Rect resolution) {
+		public void init(float[] operator, short[] samples, Rect window, Rect canvas, Rect resolution) {
+			this.operator = operator;
 			System.arraycopy(samples, 0, this.samples, 0, samples.length);
 			this.window = window;
 			this.canvas = canvas;

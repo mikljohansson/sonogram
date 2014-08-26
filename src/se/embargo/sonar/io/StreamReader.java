@@ -68,8 +68,8 @@ public class StreamReader implements ISonar {
 			item = new ISignalFilter.Item(samplerate, samplecount);
 		}
 		
-		public void init(short[] samples, Rect resolution) {
-			item.init(samples, _controller.getSonarWindow(), _controller.getSonarCanvas(), resolution);
+		public void init(float[] operator, short[] samples, Rect resolution) {
+			item.init(operator, samples, _controller.getSonarWindow(), _controller.getSonarCanvas(), resolution);
 		}
 
 		@Override
@@ -87,6 +87,7 @@ public class StreamReader implements ISonar {
 		private int _samplecount, _width, _heigth;
 		private float _samplerate;
 		private long _startPosition;
+		private float[] _operator;
 		
 		@Override
 		public void run() {
@@ -126,7 +127,7 @@ public class StreamReader implements ISonar {
 					}
 				
 					// Perform the filter processing on the thread pool
-					task.init(samples, resolution);
+					task.init(_operator, samples, resolution);
 					_threadpool.submit(task);
 					
 					// Sleep for a while
@@ -146,11 +147,27 @@ public class StreamReader implements ISonar {
 		
 		private void startReading() throws IOException {
 			_dis = new DataInputStream(new InflaterInputStream(new BufferedInputStream(_fis)));
-			/*int version = */_dis.readInt();
+			int magic = _dis.readInt();
+			if (magic != StreamWriter.MAGIC) {
+				throw new IOException("Invalid magic number: " + magic);
+			}
+			
+			int version = _dis.readInt();
+			if (version != StreamWriter.VERSION) {
+				throw new IOException("Unsupported version number: " + version);
+			}
+			
 			_samplerate = _dis.readFloat();
 			_samplecount = _dis.readInt();
 			_width = _dis.readInt();
 			_heigth = _dis.readInt();
+			
+			// Read the operator used for this item
+			int operatorlength = _dis.readInt();
+			_operator = new float[operatorlength];
+			for (int i = 0; i < _operator.length; i++) {
+				_operator[i] = _dis.readFloat();
+			}
 		}
 	}
 }

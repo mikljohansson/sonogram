@@ -137,18 +137,18 @@ public class MainActivity extends SherlockFragmentActivity {
 		}
 		else if (_sonogramView != null) {
 			_sonar.setController(_sonogramView);
-			_sonar.setFilter(new CompositeFilter(new SonogramFilter(Sonar.OPERATOR, _baseline)/*, new AverageFilter()*/, _sonogramView, new FramerateCounter()));
+			_sonar.setFilter(new CompositeFilter(new SonogramFilter(_baseline)/*, new AverageFilter()*/, _sonogramView, new FramerateCounter()));
 		}
 		else if (_histogramView2 != null) {
 			_sonar.setController(new CompositeSonarController(_histogramView, _histogramView2));
 			_sonar.setFilter(new CompositeFilter(
-				new CompositeFilter(new MatchedFilter(Sonar.OPERATOR, 2, 0), new AverageFilter(), _histogramView),
-				new CompositeFilter(new MatchedFilter(Sonar.OPERATOR, 2, 1), new AverageFilter(), _histogramView2), 
+				new CompositeFilter(new MatchedFilter(0), new AverageFilter(), _histogramView),
+				new CompositeFilter(new MatchedFilter(1), new AverageFilter(), _histogramView2), 
 				new FramerateCounter()));
 		}
 		else if (_histogramView != null) {
 			_sonar.setController(_histogramView);
-			_sonar.setFilter(new CompositeFilter(new MatchedFilter(Sonar.OPERATOR), new AverageFilter(), _histogramView, new FramerateCounter()));
+			_sonar.setFilter(new CompositeFilter(new MatchedFilter(), new AverageFilter(), _histogramView, new FramerateCounter()));
 			//_histogramView.setZoom(3);
 		}
 		

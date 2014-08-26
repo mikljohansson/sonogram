@@ -1,8 +1,5 @@
 package se.embargo.sonar.shader;
 
-import java.nio.ByteBuffer;
-import java.nio.ShortBuffer;
-
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
@@ -20,7 +17,7 @@ public class PreviewRenderer implements GLSurfaceView.Renderer {
     private SonogramShader _shader;
     private PreviewShader _preview;
     
-    private float[] _channel0 = new float[0], _channel1 = new float[0];
+    private float[] _operator, _channel0 = new float[0], _channel1 = new float[0];
     
     public PreviewRenderer(Context context) {
     	_context = context;
@@ -58,13 +55,14 @@ public class PreviewRenderer implements GLSurfaceView.Renderer {
     public synchronized void onDrawFrame(GL10 glUnused) {
     	if (_channel0 != null && _channel1 != null) {
     		_program.draw();
-    		_shader.draw(_channel0, _channel1);
+    		_shader.draw(_operator, _channel0, _channel1);
     		_preview.draw();
     	}
     }
 
 	public synchronized void receive(Item item) {
 		final short[] samples = item.samples;
+		_operator = item.operator;
 		
 		if (_channel0.length != samples.length / 2) {
 			_channel0 = new float[samples.length / 2];

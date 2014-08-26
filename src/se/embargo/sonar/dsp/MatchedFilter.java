@@ -5,18 +5,15 @@ import se.embargo.core.concurrent.Parallel;
 import android.annotation.SuppressLint;
 
 public class MatchedFilter implements ISignalFilter {
-	private final float[] _operator;
-	private final int _step, _offset;
+	private final int _offset;
 	private final FilterBody _body = new FilterBody();
 	
-	public MatchedFilter(float[] operator, int step, int offset) {
-		_operator = operator;
-		_step = step;
+	public MatchedFilter(int offset) {
 		_offset = offset;
 	}
 
-	public MatchedFilter(float[] operator) {
-		this(operator, 1, 0);
+	public MatchedFilter() {
+		this(0);
 	}
 
 	@Override
@@ -35,7 +32,7 @@ public class MatchedFilter implements ISignalFilter {
 		@Override
 		@SuppressLint("FloatMath")
 		public void run(Item item, int it, int last) {
-			final float[] operator = _operator;
+			final float[] operator = item.operator;
 			final short[] samples = item.samples;
 			final float[] output = item.output;
 			final float maxshort = Short.MAX_VALUE;
@@ -51,7 +48,7 @@ public class MatchedFilter implements ISignalFilter {
 					//float r2 = si - FloatMath.floor(si), r1 = 1.0f - r2;
 					float acc = 0;
 					
-					for (int j = 0, jl = operator.length, vi = (int)si * _step + _offset; j < jl; j++, vi += _step) {
+					for (int j = 0, jl = operator.length, vi = (int)si * 2 + _offset; j < jl; j++, vi += 2) {
 						//float sample = (float)samples[vi] * r1 + (float)samples[vi + _step] * r2;
 						float sample = (float)samples[vi];
 						acc += (sample / maxshort) * operator[j];

@@ -11,7 +11,8 @@ import android.util.Log;
 
 public class StreamWriter implements ISignalFilter {
 	private static final String TAG = "StreamWriter";
-	private static final int VERSION = 1; 
+	public static final int MAGIC = 0xa24c7709;
+	public static final int VERSION = 2; 
 	
 	private DataOutputStream _os;
 	private boolean _headerWritten = false;
@@ -37,11 +38,18 @@ public class StreamWriter implements ISignalFilter {
 			try {
 				if (!_headerWritten) {
 					_headerWritten = true;
+					_os.writeInt(MAGIC);
 					_os.writeInt(VERSION);
 					_os.writeFloat(item.samplerate);
 					_os.writeInt(item.samples.length);
 					_os.writeInt(item.resolution.width());
 					_os.writeInt(item.resolution.height());
+					
+					// Write the operator used for this item
+					_os.writeInt(item.operator.length);
+					for (int i = 0; i < item.operator.length; i++) {
+						_os.writeFloat(item.operator[i]);
+					}
 				}
 				
 				for (int i = 0; i < item.samples.length; i++) {
