@@ -1,7 +1,6 @@
 package se.embargo.sonar;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
@@ -106,13 +105,8 @@ public class MainActivity extends SherlockFragmentActivity {
 			Uri url = getIntent().getData();
 			//Uri url = Uri.parse("file:///storage/emulated/0/Pictures/Sonar/IMGS0009.sonar");
 			if (url != null) {
-				try {
-					Log.i(TAG, "Opening sonar dump: " + url);
-					_sonar = new StreamReader(new FileInputStream(url.getPath()));
-				}
-				catch (FileNotFoundException e) {
-					Log.e(TAG, e.getMessage(), e);
-				}
+				Log.i(TAG, "Opening sonar dump: " + url);
+				_sonar = new StreamReader(url.getPath());
 			}
 		}
 

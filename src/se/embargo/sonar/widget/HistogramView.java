@@ -78,14 +78,14 @@ public class HistogramView extends BufferedView implements ISonarController, ISi
     	Rect resolution = getResolution();
 	    
 	    // Draw the histogram
-	    float scale = (float)canvasWindow.height() / (float)dataWindow.height();
-	    float bottom = (float)(resolution.bottom - dataWindow.bottom) * scale;
+	    float scale = (float)canvasWindow.height() / Math.min(dataWindow.height(), resolution.height());
+	    float top = (float)(dataWindow.top - resolution.top) * scale;
 	    float factor = (float)resolution.height() * scale / (float)Math.log(_maxvalue + 1);
 	    //float factor = (float)resolution.height() * scale / _maxvalue;
 	    
 	    for (int i = canvasWindow.left, j = 0; i < canvasWindow.right && j < _values.length; i++, j++) {
 	    	// Scale the value logarithmically into the maximum height
-	    	float value = factor * (float)Math.log(Math.abs(_values[j]) + 1) - bottom;
+	    	float value = factor * (float)Math.log(Math.abs(_values[j]) + 1) - top;
 	    	//float value = factor * Math.abs(_values[j]) - bottom;
 	    	canvas.drawLine(i, canvasWindow.bottom, i, canvasWindow.bottom - value, _outline);
 	    }

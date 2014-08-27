@@ -53,7 +53,7 @@ public abstract class BufferedView extends View {
 
 		Rect canvas = getCanvas();
 		int height = (int)((float)resolution.width() / 2 * ((float)canvas.width() / (float)canvas.height()));
-		_dataWindow = new Rect(resolution.left, resolution.bottom - height, resolution.right, resolution.bottom);
+		_dataWindow = new Rect(resolution.left, resolution.top, resolution.right, resolution.top + height);
 		setWindow(_dataWindow);
 		//setWindow(_dataResolution);
 		
@@ -211,8 +211,8 @@ public abstract class BufferedView extends View {
 						if (_singleTouch) {
 							float xres = (float)_zoomWindow.width() / (float)_canvasWindow.width(),
 								  yres = (float)_zoomWindow.height() / (float)_canvasWindow.height();
-							float zoomx = _zx - (_x - (x - _canvasWindow.left)) * xres, 
-								  zoomy = _zy + (_y - (y - _canvasWindow.top)) * yres;
+							float zoomx = _zx + (_x - (x - _canvasWindow.left)) * xres, 
+								  zoomy = _zy - (_y - (y - _canvasWindow.top)) * yres;
 							setPosition(zoomx, zoomy);
 							_x = event.getX();
 							_y = event.getY();

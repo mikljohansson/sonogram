@@ -41,8 +41,8 @@ public class MatchedFilter implements ISignalFilter {
 			final float[] output = item.output;
 			final float maxshort = Short.MAX_VALUE;
 			
-			final float rightdistance = Signals.distance(item.samplerate, (float)item.window.right / 2.0f),
-						leftdistance = Signals.distance(item.samplerate, (float)item.window.left / 2.0f);
+			final float rightdistance = Signals.distance(item.samplerate, (float)(item.window.right - item.resolution.left) / 2.0f),
+						leftdistance = Signals.distance(item.samplerate, (float)(item.window.left - item.resolution.left) / 2.0f);
 			final float outputstep = (rightdistance - leftdistance) / (float)item.output.length;
 			float maxvalue = 0;
 			
