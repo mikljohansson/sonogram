@@ -6,6 +6,7 @@ import se.embargo.core.concurrent.Parallel;
 public class MatchedFilter implements ISignalFilter {
 	private final int _offset;
 	private final FilterBody _body = new FilterBody();
+	private boolean _reduce = false;
 	
 	public MatchedFilter(int offset) {
 		_offset = offset;
@@ -13,6 +14,11 @@ public class MatchedFilter implements ISignalFilter {
 
 	public MatchedFilter() {
 		this(0);
+	}
+	
+	public MatchedFilter reduce(boolean reduce) {
+		_reduce = reduce;
+		return this;
 	}
 
 	@Override
@@ -34,14 +40,19 @@ public class MatchedFilter implements ISignalFilter {
 			final short[] samples = item.samples;
 			final float[] output = item.output;
 			final float maxshort = Short.MAX_VALUE;
-			final float sampleratio = (float)item.window.width() / 2 / (float)item.output.length;
-			final int samplesteps = (int)Math.min(Math.ceil(sampleratio), 1.0f);
+			
+			final float rightdistance = Signals.distance(item.samplerate, (float)item.window.right / 2.0f),
+						leftdistance = Signals.distance(item.samplerate, (float)item.window.left / 2.0f);
+			final float outputstep = (rightdistance - leftdistance) / (float)item.output.length;
 			float maxvalue = 0;
 			
 			for (; it < last; it++) {
-				float si = (float)item.window.left / 2 + sampleratio * it;
+				float si = Signals.sample(item.samplerate, leftdistance + it * outputstep),
+					  sl = Signals.sample(item.samplerate, leftdistance + (it + 1) * outputstep);
+				float prev = output[it];
 				output[it] = 0.0f;
-				
+
+				final int samplesteps = (int)Math.max(Math.floor(sl - si), 1.0f);
 				for (int i = 0; i < samplesteps; i++) {
 					//float r2 = si - (float)Math.floor(si), r1 = 1.0f - r2;
 					float acc = 0;
@@ -52,7 +63,12 @@ public class MatchedFilter implements ISignalFilter {
 						acc += (sample / maxshort) * operator[j];
 					}
 					
-					output[it] += Math.abs(acc);
+					output[it] = Math.max(output[it], Math.abs(acc));
+					//output[it] += Math.abs(acc);
+				}
+				
+				if (_reduce) {
+					output[it] *= prev; 
 				}
 				
 				maxvalue = Math.max(maxvalue, output[it]);

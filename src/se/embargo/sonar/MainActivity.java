@@ -13,7 +13,6 @@ import se.embargo.core.databinding.observable.IObservableValue;
 import se.embargo.core.databinding.observable.WritableValue;
 import se.embargo.core.widget.ListPreferenceDialog;
 import se.embargo.core.widget.SeekBarDialog;
-import se.embargo.sonar.dsp.AverageFilter;
 import se.embargo.sonar.dsp.CompositeFilter;
 import se.embargo.sonar.dsp.FramerateCounter;
 import se.embargo.sonar.dsp.ISignalFilter;
@@ -185,7 +184,7 @@ public class MainActivity extends SherlockFragmentActivity {
 	private class FocusButtonListener implements View.OnClickListener {
 		@Override
 		public void onClick(View v) {
-			SeekBarDialog dialog = new SeekBarDialog(MainActivity.this, _baseline, 0.001f, 0.01f, 0.30f);
+			SeekBarDialog dialog = new SeekBarDialog(MainActivity.this, _baseline, 0.001f, -0.25f, 0.25f);
 			dialog.setFormat("%.03f");
 			dialog.show();
 		}
@@ -373,7 +372,7 @@ public class MainActivity extends SherlockFragmentActivity {
 				
 				if ("histogram".equals(value)) {
 					HistogramView histogram = (HistogramView)_histogramLayout.findViewById(R.id.histogram);
-					_sonar.init(histogram, new CompositeFilter(new MatchedFilter(), new AverageFilter(), histogram, new FramerateCounter()));
+					_sonar.init(histogram, new CompositeFilter(new MatchedFilter(), new MatchedFilter(1).reduce(true), /*new AverageFilter(), */histogram, new FramerateCounter()));
 					_histogramLayout.setVisibility(View.VISIBLE);
 				}
 				else if ("dual_histogram".equals(value)) {
@@ -383,8 +382,8 @@ public class MainActivity extends SherlockFragmentActivity {
 					_sonar.init(
 						new CompositeSonarController(histogram, histogram2),
 						new CompositeFilter(
-							new CompositeFilter(new MatchedFilter(0), new AverageFilter(), histogram),
-							new CompositeFilter(new MatchedFilter(1), new AverageFilter(), histogram2), 
+							new CompositeFilter(new MatchedFilter(0), /*new AverageFilter(), */histogram),
+							new CompositeFilter(new MatchedFilter(1), /*new MatchedFilter(1).reduce(true),*/ /*new AverageFilter(), */histogram2), 
 							new FramerateCounter()));
 
 					_dualHistogramLayout.setVisibility(View.VISIBLE);

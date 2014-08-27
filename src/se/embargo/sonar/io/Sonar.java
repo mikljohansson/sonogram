@@ -28,7 +28,7 @@ public class Sonar implements ISonar {
 	
 	private static final int SAMPLERATE = 44100;
 	private static final int PULSEINTERVAL = 80;
-	private static final int PULSEDURATION = 5;
+	private static final int PULSEDURATION = 1;
 	private static final float PULSEAMPLITUDE = 0.9f;
 	
 	public static final int OPERATOR_LENGTH = SAMPLERATE * PULSEDURATION / 1000;
@@ -39,8 +39,7 @@ public class Sonar implements ISonar {
 	 */
 	private static final float[] OPERATOR = Signals.createLinearChirp(
 		SAMPLERATE, PULSEDURATION, 
-		(float)SAMPLERATE / 2 - SAMPLERATE / 4,
-		(float)SAMPLERATE / 4);
+		0, (float)SAMPLERATE / 2 - (float)SAMPLERATE / 16);
 	
 	private ISonarController _controller;
 	private final SonarWorker _inputworker = new AudioInputWorker(), _outputworker = new AudioOutputWorker();
@@ -264,11 +263,13 @@ public class Sonar implements ISonar {
 				
 				// Apply convolution to find maximum value
 				for (int i = 0, il = samples.length - operator.length * step; i < il; i += step) {
-					float acc = 0;
+					float acca = 0, accb = 0, acc;
 					for (int j = 0, is = i; j < operator.length; j++, is += step) {
-						acc += ((float)samples[is] / maxshort) * operator[j];
+						acca += ((float)samples[is] / maxshort) * operator[j];
+						accb += ((float)samples[is + 1] / maxshort) * operator[j];
 					}
 					
+					acc = acca * accb;
 					if (maxval < Math.abs(acc)) {
 						maxval = Math.abs(acc);
 						maxpos = i / 2;

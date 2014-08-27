@@ -52,9 +52,10 @@ public abstract class BufferedView extends View {
 		_dataResolution = new Rect(resolution);
 
 		Rect canvas = getCanvas();
-		int width = Math.min((int)((float)resolution.height() * ((float)canvas.width() / (float)canvas.height())), resolution.width());
-		_dataWindow = new Rect(resolution.centerX() - width / 2, resolution.top, resolution.centerX() + width / 2, resolution.bottom);
+		int height = (int)((float)resolution.width() / 2 * ((float)canvas.width() / (float)canvas.height()));
+		_dataWindow = new Rect(resolution.left, resolution.bottom - height, resolution.right, resolution.bottom);
 		setWindow(_dataWindow);
+		//setWindow(_dataResolution);
 		
 		_zoomx = _zoomWindow.left;
 		_zoomy = _zoomWindow.right;

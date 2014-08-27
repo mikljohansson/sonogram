@@ -7,11 +7,6 @@ import android.annotation.SuppressLint;
 
 public class SonogramFilter implements ISignalFilter {
 	/**
-	 * Speed of sound in meters/second
-	 */
-	private static final float SPEED = 340.29f;
-
-	/**
 	 * Distance between microphones in meters
 	 */
 	private final IObservableValue<Float> _baseline;
@@ -78,7 +73,7 @@ public class SonogramFilter implements ISignalFilter {
 						yadj = item.resolution.bottom - item.window.bottom;
 			
 			// Number of samples between microphones
-			final float baseline = item.samplerate / SPEED * _baseline.getValue();
+			final float baseline = item.samplerate / Signals.SPEED * _baseline.getValue();
 			
 			// For each line in sonogram
 			for (; y < ylast; y++) {
