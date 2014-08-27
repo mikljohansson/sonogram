@@ -253,7 +253,7 @@ public class MainActivity extends SherlockFragmentActivity {
 			}
 			
 			_prevFilter = _sonar.getFilter();
-			_outputFilter = new StreamWriter(os, 1);
+			_outputFilter = new StreamWriter(os, _baseline, 1);
 			_outputFilter.setListener(this);
 			_sonar.init(_sonar.getController(), new CompositeFilter(_outputFilter, _prevFilter));
 		}
@@ -266,7 +266,7 @@ public class MainActivity extends SherlockFragmentActivity {
 					_sonar.init(_sonar.getController(), _prevFilter);
 					_outputFilter = null;
 					_prevFilter = null;
-					Toast.makeText(MainActivity.this, R.string.saved_sonar_dump, Toast.LENGTH_SHORT).show();
+					Toast.makeText(MainActivity.this, R.string.saved_sonar_recording, Toast.LENGTH_SHORT).show();
 				}
 			});
 		}
@@ -330,7 +330,7 @@ public class MainActivity extends SherlockFragmentActivity {
 			}
 			
 			_prevFilter = _sonar.getFilter();
-			_outputFilter = new StreamWriter(os);
+			_outputFilter = new StreamWriter(os, _baseline);
 			_outputFilter.setListener(this);
 			_sonar.init(_sonar.getController(), new CompositeFilter(_outputFilter, _prevFilter));
 			_cameraState.setValue(RecordState.Recording);
@@ -353,7 +353,7 @@ public class MainActivity extends SherlockFragmentActivity {
 					_outputFilter = null;
 					_prevFilter = null;
 					_cameraState.setValue(RecordState.Video);
-					Toast.makeText(MainActivity.this, R.string.saved_sonar_dump, Toast.LENGTH_SHORT).show();
+					Toast.makeText(MainActivity.this, R.string.saved_sonar_recording, Toast.LENGTH_SHORT).show();
 				}
 			});
 		}

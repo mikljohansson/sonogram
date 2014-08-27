@@ -167,6 +167,7 @@ public class StreamReader implements ISonar {
 			}
 			
 			_samplerate = _dis.readFloat();
+			/*float baseline = */_dis.readFloat();
 			_samplecount = _dis.readInt();
 			int width = _dis.readInt();
 			int heigth = _dis.readInt();

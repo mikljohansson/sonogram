@@ -9,5 +9,5 @@
     <string name="menu_option_visualization">Visualization</string>
     <string name="menu_option_switch_camera_mode">Camera/Video</string>
     
-    <string name="saved_sonar_dump">Saved image</string>
+    <string name="saved_sonar_recording">Saved sonar recording</string>
 </resources>

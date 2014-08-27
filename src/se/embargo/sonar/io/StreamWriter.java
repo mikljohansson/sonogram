@@ -6,31 +6,34 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.zip.DeflaterOutputStream;
 
+import se.embargo.core.databinding.observable.IObservableValue;
 import se.embargo.sonar.dsp.ISignalFilter;
 import android.util.Log;
 
 public class StreamWriter implements ISignalFilter {
 	private static final String TAG = "StreamWriter";
 	public static final int MAGIC = 0xa24c7709;
-	public static final int VERSION = 2; 
+	public static final int VERSION = 3; 
 	
 	public interface IStreamListener {
 		abstract void onClosed();
 	}
 	
 	private DataOutputStream _os;
-	private boolean _headerWritten = false;
+	private final IObservableValue<Float> _baseline; 
 	private final int _itemlimit;
 	private int _itemcount = 0;
+	private boolean _headerWritten = false;
 	private IStreamListener _listener = null;
 	
-	public StreamWriter(OutputStream os, int itemlimit) {
+	public StreamWriter(OutputStream os, IObservableValue<Float> baseline, int itemlimit) {
 		_os = new DataOutputStream(new DeflaterOutputStream(new BufferedOutputStream(os)));
+		_baseline = baseline;
 		_itemlimit = itemlimit;
 	}
 	
-	public StreamWriter(OutputStream os) {
-		this(os, Integer.MAX_VALUE);
+	public StreamWriter(OutputStream os, IObservableValue<Float> baseline) {
+		this(os, baseline, Integer.MAX_VALUE);
 	}
 	
 	public void setListener(IStreamListener listener) {
@@ -63,6 +66,7 @@ public class StreamWriter implements ISignalFilter {
 					_os.writeInt(MAGIC);
 					_os.writeInt(VERSION);
 					_os.writeFloat(item.samplerate);
+					_os.writeFloat(_baseline.getValue());
 					_os.writeInt(item.samples.length);
 					_os.writeInt(item.resolution.width());
 					_os.writeInt(item.resolution.height());
