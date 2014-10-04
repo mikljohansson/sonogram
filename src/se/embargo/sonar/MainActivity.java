@@ -15,6 +15,7 @@ import se.embargo.core.widget.SeekBarDialog;
 import se.embargo.sonar.dsp.CompositeFilter;
 import se.embargo.sonar.dsp.FramerateCounter;
 import se.embargo.sonar.dsp.ISignalFilter;
+import se.embargo.sonar.dsp.HistogramFilter;
 import se.embargo.sonar.dsp.MatchedFilter;
 import se.embargo.sonar.dsp.SonogramFilter;
 import se.embargo.sonar.io.ISonar;
@@ -366,8 +367,10 @@ public class MainActivity extends SherlockFragmentActivity {
 				
 				if ("histogram".equals(value)) {
 					HistogramView histogram = (HistogramView)_histogramLayout.findViewById(R.id.histogram);
-					_sonar.init(histogram, new CompositeFilter(new MatchedFilter(), new MatchedFilter(1).reduce(true), /*new AverageFilter(), */histogram, new FramerateCounter()));
+					_sonar.init(histogram, new CompositeFilter(new HistogramFilter(), new HistogramFilter(1).reduce(true), /*new AverageFilter(), */histogram, new FramerateCounter()));
 					_histogramLayout.setVisibility(View.VISIBLE);
+					
+					histogram.setZoom(3, 0, histogram.getWindow().height());
 				}
 				else if ("dual_histogram".equals(value)) {
 					HistogramView histogram = (HistogramView)_dualHistogramLayout.findViewById(R.id.histogram);
@@ -376,16 +379,23 @@ public class MainActivity extends SherlockFragmentActivity {
 					_sonar.init(
 						new CompositeSonarController(histogram, histogram2),
 						new CompositeFilter(
-							new CompositeFilter(new MatchedFilter(0), /*new AverageFilter(), */histogram),
-							new CompositeFilter(new MatchedFilter(1), /*new MatchedFilter(1).reduce(true),*/ /*new AverageFilter(), */histogram2), 
+							new CompositeFilter(new HistogramFilter(0), /*new AverageFilter(), */histogram),
+							new CompositeFilter(new HistogramFilter(1), /*new MatchedFilter(1).reduce(true),*/ /*new AverageFilter(), */histogram2), 
 							new FramerateCounter()));
 
 					_dualHistogramLayout.setVisibility(View.VISIBLE);
+					
+					histogram.setZoom(3, 0, histogram.getWindow().bottom);
+					histogram2.setZoom(3, 0, histogram2.getWindow().bottom);
 				}
 				else {
 					SonogramView sonogram = (SonogramView)_sonogramLayout.findViewById(R.id.sonogram);
-					_sonar.init(sonogram, new CompositeFilter(new SonogramFilter(_baseline)/*, new AverageFilter()*/, sonogram, new FramerateCounter()));
+					_sonar.init(sonogram, new CompositeFilter(
+						new MatchedFilter(),
+						new SonogramFilter(_baseline)/*, new AverageFilter()*/, sonogram, new FramerateCounter()));
 					_sonogramLayout.setVisibility(View.VISIBLE);
+					
+					sonogram.setZoom(10, sonogram.getResolution().centerX(), sonogram.getWindow().top);
 				}
 
 				/*

@@ -11,8 +11,7 @@ public class SonogramFilter implements ISignalFilter {
 	 */
 	private final IObservableValue<Float> _baseline;
 
-	private final FilterBody _filter = new FilterBody();
-	private final ReduceBody _reduce = new ReduceBody();
+	private final ReduceBody _body = new ReduceBody();
 	
 	public SonogramFilter(IObservableValue<Float> baseline) {
 		_baseline = baseline;
@@ -28,33 +27,8 @@ public class SonogramFilter implements ISignalFilter {
 
 		item.maxvalue = 0;
 		
-		// Convolve both channels
-		Parallel.forRange(_filter, item, 0, item.samples.length - item.operator.length * 2);
-		
 		// Apply filter in parallel over output rows
-		Parallel.forRange(_reduce, item, 0, item.canvas.height());
-	}
-	
-	private class FilterBody implements IForBody<Item> {
-		@Override
-		@SuppressLint("FloatMath")
-		public void run(Item item, int i, int last) {
-			final float[] operator = item.operator;
-			final short[] samples = item.samples;
-			final float[] matched = item.matched;
-			
-			// Divisor to get samples into [-1.0, 1.0] range
-			final float divisor = (float)Short.MAX_VALUE;
-			
-			for (; i < last; i++) {
-				float acc = 0;
-				for (int j = 0, jl = operator.length, si = i; j < jl; j++, si += 2) {
-					acc += ((float)samples[si] / divisor) * operator[j];
-				}
-				
-				matched[i] = Math.abs(acc);
-			}
-		}
+		Parallel.forRange(_body, item, 0, item.canvas.height());
 	}
 	
 	private class ReduceBody implements IForBody<Item> {
@@ -96,26 +70,12 @@ public class SonogramFilter implements ISignalFilter {
 					float acc = 0;
 					final int samplesteps = (int)Math.max(Math.floor(ha2 - ha1), 1.0f);
 					
-					for (int sai = (int)ha1 * 2, sbi = (int)hb1 * 2 + 1, ixl = samplesteps - 1,
+					for (int sai = (int)ha1 * 2, sbi = (int)hb1 * 2 + 1,
 						     sal = Math.min(sai + samplesteps, matched.length - 2),
-							 sbl = Math.min(sbi + samplesteps, matched.length - 2), 
-							 ix = 0; sai < sal && sbi < sbl; sai++, sbi++, ix++) { 
-						float asample;
-						float bsample;
-						
-						if (ix == 0) {						
-							asample = matched[sai] * ra1 + matched[sai + 2] * ra2;
-							bsample = matched[sbi] * rb1 + matched[sbi + 2] * rb2;
-						}
-						else if (ix == ixl) {
-							asample = matched[sai] * (1.0f - ra1) + matched[sai + 2] * (1.0f - ra2);
-							bsample = matched[sbi] * (1.0f - rb1) + matched[sbi + 2] * (1.0f - rb2);
- 						}
-						else {
-							asample = matched[sai] + matched[sai + 2];
-							bsample = matched[sbi] + matched[sbi + 2];
-						}
-						
+							 sbl = Math.min(sbi + samplesteps, matched.length - 2); 
+							 sai < sal && sbi < sbl; sai++, sbi++) { 
+						float asample = matched[sai] * ra1 + matched[sai + 2] * ra2;
+						float bsample = matched[sbi] * rb1 + matched[sbi + 2] * rb2;
 						acc += asample * bsample;
 					}
 					

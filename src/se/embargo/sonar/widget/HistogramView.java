@@ -63,6 +63,7 @@ public class HistogramView extends BufferedView implements ISonarController, ISi
 		postInvalidateCanvas();
 	}
 
+	/*
 	@Override
 	protected synchronized void onSizeChanged(int w, int h, int oldw, int oldh) {
 		super.onSizeChanged(w, h, oldw, oldh);
@@ -72,6 +73,7 @@ public class HistogramView extends BufferedView implements ISonarController, ISi
 			setResolution(new Rect(resolution.left, resolution.top, resolution.right, h));
 		}
 	}
+	*/
 
 	@Override
 	protected synchronized void draw(Canvas canvas, Rect dataWindow, Rect canvasWindow) {

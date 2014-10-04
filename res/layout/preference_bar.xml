@@ -1,38 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<se.embargo.sonar.widget.PreferenceLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" 
 	android:layout_width="wrap_content"
 	android:layout_height="match_parent"
 	android:minWidth="76dp"
-	android:background="@drawable/bg_header_pattern">
-	
-    <LinearLayout 
-		android:layout_width="wrap_content"
-		android:layout_height="match_parent"
-		android:layout_centerHorizontal="true"
-        android:orientation="vertical">
-		<LinearLayout 
-			style="@style/PreviewButtonLayout">
-			<se.embargo.sonar.widget.PreferenceButton 
-				style="@style/PreviewButton"
-				android:id="@+id/visualizationButton" 
-				android:src="@drawable/ic_button_line_chart"
-				android:contentDescription="@string/menu_option_visualization"/>
-		</LinearLayout>
-		<LinearLayout 
-			style="@style/PreviewButtonLayout">
-			<se.embargo.sonar.widget.PreferenceButton 
-				style="@style/PreviewButton"
-				android:id="@+id/focusButton" 
-				android:src="@drawable/ic_button_focus"
-				android:contentDescription="@string/menu_option_focus"/>
-		</LinearLayout>
-		<LinearLayout 
-			style="@style/PreviewButtonLayout">
-			<se.embargo.sonar.widget.PreferenceButton 
-				style="@style/PreviewButton"
-				android:id="@+id/editSettingsButton" 
-				android:src="@drawable/ic_button_settings"
-				android:contentDescription="@string/menu_option_settings"/>
-		</LinearLayout>
+	android:background="@drawable/bg_header_pattern"
+       android:orientation="vertical">
+	<LinearLayout 
+		style="@style/PreviewButtonLayout">
+		<se.embargo.sonar.widget.PreferenceButton 
+			style="@style/PreviewButton"
+			android:id="@+id/visualizationButton" 
+			android:src="@drawable/ic_button_line_chart"
+			android:contentDescription="@string/menu_option_visualization"/>
 	</LinearLayout>
-</se.embargo.sonar.widget.PreferenceLayout>
+	<LinearLayout 
+		style="@style/PreviewButtonLayout">
+		<se.embargo.sonar.widget.PreferenceButton 
+			style="@style/PreviewButton"
+			android:id="@+id/focusButton" 
+			android:src="@drawable/ic_button_focus"
+			android:contentDescription="@string/menu_option_focus"/>
+	</LinearLayout>
+	<LinearLayout 
+		style="@style/PreviewButtonLayout">
+		<se.embargo.sonar.widget.PreferenceButton 
+			style="@style/PreviewButton"
+			android:id="@+id/editSettingsButton" 
+			android:src="@drawable/ic_button_settings"
+			android:contentDescription="@string/menu_option_settings"/>
+	</LinearLayout>
+</LinearLayout>

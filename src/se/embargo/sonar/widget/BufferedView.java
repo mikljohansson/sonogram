@@ -18,8 +18,7 @@ public abstract class BufferedView extends View {
 	private final Paint _bitmapPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
 	private boolean _invalid;
 	
-	private volatile Rect _dataResolution = new Rect(_canvasWindow);
-	private volatile Rect _dataWindow = new Rect(_canvasWindow);
+	private volatile Rect _resolution = new Rect(_canvasWindow);
 	private volatile Rect _zoomWindow = new Rect(_canvasWindow);
 	private float _zoom = 1.0f;
 	private float _zoomx = 0, _zoomy = 0, _zoomw = 0, _zoomh = 0;
@@ -45,23 +44,21 @@ public abstract class BufferedView extends View {
 	protected abstract void draw(Canvas canvas, Rect dataWindow, Rect canvasWindow);
 	
 	public Rect getResolution() {
-		return _dataResolution;
+		return _resolution;
 	}
 
 	public synchronized void setResolution(Rect resolution) {
-		_dataResolution = new Rect(resolution);
-
-		Rect canvas = getCanvas();
-		int height = (int)((float)resolution.width() / 2 * ((float)canvas.width() / (float)canvas.height()));
-		_dataWindow = new Rect(resolution.left, resolution.top, resolution.right, resolution.top + height);
-		setWindow(_dataWindow);
-		//setWindow(_dataResolution);
+		_resolution = new Rect(resolution);
+		_zoomw = (float)_resolution.width() / _zoom;
+		_zoomh = (float)_resolution.height() / _zoom;
+		_zoomx = _resolution.centerX() - _zoomw / 2;
+		_zoomy = _resolution.top;
 		
-		_zoomx = _zoomWindow.left;
-		_zoomy = _zoomWindow.right;
-		_zoomw = _zoomWindow.width();
-		_zoomh = _zoomWindow.height();
-		_zoom = 1.0f;
+		setWindow(new Rect(
+			Math.max((int)_zoomx, _resolution.left),
+			Math.max((int)_zoomy, _resolution.top),
+			Math.min((int)_zoomx + (int)_zoomw, _resolution.right),
+			Math.min((int)_zoomy + (int)_zoomh, _resolution.bottom)));
 	}
 	
 	/**
@@ -91,30 +88,34 @@ public abstract class BufferedView extends View {
 	
 	protected synchronized void setCanvas(Rect canvas) {
 		_canvasWindow = canvas;
-		setResolution(_dataResolution);
 	}
 	
+	/**
+	 * @param zoom	Zoom factor to apply
+	 * @param x		Coordinate in data window to focus zoom on
+	 * @param y		Coordinate in data window to focus zoom on
+	 */
 	public synchronized void setZoom(float zoom, float x, float y) {
-		float zoomw = Math.min((float)_dataWindow.width() / zoom, _dataWindow.width()),
-			  zoomh = Math.min((float)_dataWindow.height() / zoom, _dataWindow.height());
+		float zoomw = Math.min((float)_resolution.width() / zoom, _resolution.width()),
+			  zoomh = Math.min((float)_resolution.height() / zoom, _resolution.height());
 		
 		float xadj = (zoomw - _zoomw) * (x - _zoomx) / _zoomWindow.width(),
 		      yadj = (zoomh - _zoomh) * (y - _zoomy) / _zoomWindow.height();
 
-		float zoomx = Math.max(Math.min(_zoomx - xadj + zoomw, _dataWindow.right) - zoomw, _dataWindow.left),
-			  zoomy = Math.max(Math.min(_zoomy - yadj + zoomh, _dataWindow.bottom) - zoomh, _dataWindow.top);
+		float zoomx = Math.max(Math.min(_zoomx - xadj + zoomw, _resolution.right) - zoomw, _resolution.left),
+			  zoomy = Math.max(Math.min(_zoomy - yadj + zoomh, _resolution.bottom) - zoomh, _resolution.top);
 		
-		_zoom = Math.max((float)_dataWindow.width() / zoomw, (float)_dataWindow.height() / zoomh);
+		_zoom = Math.max((float)_resolution.width() / zoomw, (float)_resolution.height() / zoomh);
 		_zoomx = zoomx;
 		_zoomy = zoomy;
 		_zoomw = zoomw;
 		_zoomh = zoomh;
 
 		setWindow(new Rect(
-			Math.max((int)zoomx, _dataWindow.left),
-			Math.max((int)zoomy, _dataWindow.top),
-			Math.min((int)zoomx + (int)zoomw, _dataWindow.right),
-			Math.min((int)zoomy + (int)zoomh, _dataWindow.bottom)));
+			Math.max((int)_zoomx, _resolution.left),
+			Math.max((int)_zoomy, _resolution.top),
+			Math.min((int)_zoomx + (int)_zoomw, _resolution.right),
+			Math.min((int)_zoomy + (int)_zoomh, _resolution.bottom)));
 	}
 	
 	public synchronized void setZoom(float zoom) {
@@ -123,8 +124,8 @@ public abstract class BufferedView extends View {
 	
 	private synchronized void setPosition(float x, float y) {
 		int w = _zoomWindow.width(), h = _zoomWindow.height();
-		_zoomx = Math.max(_dataWindow.left, Math.min(x, _dataWindow.right - w));
-		_zoomy = Math.max(_dataWindow.top, Math.min(y, _dataWindow.bottom - h));
+		_zoomx = Math.max(_resolution.left, Math.min(x, _resolution.right - w));
+		_zoomy = Math.max(_resolution.top, Math.min(y, _resolution.bottom - h));
 		
 		setWindow(new Rect(
 			(int)_zoomx, 

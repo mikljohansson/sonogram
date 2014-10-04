@@ -3,20 +3,20 @@ package se.embargo.sonar.dsp;
 import se.embargo.core.concurrent.IForBody;
 import se.embargo.core.concurrent.Parallel;
 
-public class MatchedFilter implements ISignalFilter {
+public class HistogramFilter implements ISignalFilter {
 	private final int _offset;
 	private final FilterBody _body = new FilterBody();
 	private boolean _reduce = false;
 	
-	public MatchedFilter(int offset) {
+	public HistogramFilter(int offset) {
 		_offset = offset;
 	}
 
-	public MatchedFilter() {
+	public HistogramFilter() {
 		this(0);
 	}
 	
-	public MatchedFilter reduce(boolean reduce) {
+	public HistogramFilter reduce(boolean reduce) {
 		_reduce = reduce;
 		return this;
 	}

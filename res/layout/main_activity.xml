@@ -2,28 +2,21 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:baselineAligned="false"
     android:background="#000000"
     android:orientation="horizontal" >
     <include layout="@layout/preference_bar"/>
     
     <RelativeLayout
+        android:id="@+id/visualizationLayout"
 		android:layout_width="0dp"
 		android:layout_height="match_parent"
 		android:layout_weight="1">
 	
-	    <RelativeLayout
-	        android:id="@+id/visualizationLayout"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:layout_centerInParent="true"
-            android:background="#00ff00">
-
-	        <include layout="@layout/sonogram"/>
-	        <include layout="@layout/histogram"/>
-	        <include layout="@layout/dual_histogram"/>
-	        
-		    <include layout="@layout/detailed_preferences"/>
-		</RelativeLayout>
+        <include layout="@layout/sonogram"/>
+        <include layout="@layout/histogram"/>
+        <include layout="@layout/dual_histogram"/>
+	    <include layout="@layout/detailed_preferences"/>
 	</RelativeLayout>
 
 	<include layout="@layout/control_bar"/>

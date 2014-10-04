@@ -26,6 +26,11 @@ public class StreamReader implements ISonar {
 	private Rect _resolution;
 	private final SonarWorker _inputworker = new AudioInputWorker();
 	
+	private DataInputStream _dis;
+	private int _samplecount;
+	private float _samplerate;
+	private float[] _operator;
+	
 	private static ExecutorService _threadpool = new ThreadPoolExecutor(
 		Parallel.getNumberOfCores(), Parallel.getNumberOfCores(), 0, TimeUnit.MILLISECONDS, 
 		new ArrayBlockingQueue<Runnable>(4, false), new ThreadPoolExecutor.DiscardOldestPolicy());
@@ -41,9 +46,17 @@ public class StreamReader implements ISonar {
 		_controller = controller;
 		_filter = filter;
 		
-		if (_resolution != null) {
-			_controller.setSonarResolution(_resolution);
+		if (_resolution == null) {
+			try {
+				readHeader();
+			}
+			catch (IOException e) {
+				Log.e(TAG, e.getMessage(), e);
+				return;
+			}
 		}
+		
+		_controller.setSonarResolution(_resolution);
 	}
 
 	@Override
@@ -64,6 +77,37 @@ public class StreamReader implements ISonar {
 	@Override
 	public synchronized void stop() {
 		_inputworker.stop();
+	}
+	
+	private void readHeader() throws IOException {
+		if (_dis != null) {
+			_dis.close();
+		}
+		
+		_dis = new DataInputStream(new InflaterInputStream(new BufferedInputStream(new FileInputStream(_path))));
+		int magic = _dis.readInt();
+		if (magic != StreamWriter.MAGIC) {
+			throw new IOException("Invalid magic number: " + magic);
+		}
+		
+		int version = _dis.readInt();
+		if (version != StreamWriter.VERSION) {
+			throw new IOException("Unsupported version number: " + version);
+		}
+		
+		_samplerate = _dis.readFloat();
+		/*float baseline = */_dis.readFloat();
+		_samplecount = _dis.readInt();
+		int width = _dis.readInt();
+		int heigth = _dis.readInt();
+		_resolution = new Rect(0, 0, width, heigth);
+		
+		// Read the operator used for this item
+		int operatorlength = _dis.readInt();
+		_operator = new float[operatorlength];
+		for (int i = 0; i < _operator.length; i++) {
+			_operator[i] = _dis.readFloat();
+		}
 	}
 	
 	private class FilterTask implements Runnable {
@@ -95,21 +139,8 @@ public class StreamReader implements ISonar {
 	}
 	
 	private class AudioInputWorker extends SonarWorker {
-		private DataInputStream _dis;
-		private int _samplecount;
-		private float _samplerate;
-		private float[] _operator;
-		
 		@Override
 		public void run() {
-			try {
-				startReading();
-			}
-			catch (IOException e) {
-				Log.e(TAG, e.getMessage(), e);
-				return;
-			}
-
 			short[] samples = new short[_samplecount];
 			_controller.setSonarResolution(_resolution);
 			
@@ -142,7 +173,7 @@ public class StreamReader implements ISonar {
 						}
 					}
 					catch (EOFException e) {
-						startReading();
+						readHeader();
 					}
 				}
 			}
@@ -150,37 +181,6 @@ public class StreamReader implements ISonar {
 				Log.e(TAG, e.getMessage(), e);
 			}
 			catch (InterruptedException e) {}
-		}
-		
-		private void startReading() throws IOException {
-			if (_dis != null) {
-				_dis.close();
-			}
-			
-			_dis = new DataInputStream(new InflaterInputStream(new BufferedInputStream(new FileInputStream(_path))));
-			int magic = _dis.readInt();
-			if (magic != StreamWriter.MAGIC) {
-				throw new IOException("Invalid magic number: " + magic);
-			}
-			
-			int version = _dis.readInt();
-			if (version != StreamWriter.VERSION) {
-				throw new IOException("Unsupported version number: " + version);
-			}
-			
-			_samplerate = _dis.readFloat();
-			/*float baseline = */_dis.readFloat();
-			_samplecount = _dis.readInt();
-			int width = _dis.readInt();
-			int heigth = _dis.readInt();
-			_resolution = new Rect(0, 0, width, heigth);
-			
-			// Read the operator used for this item
-			int operatorlength = _dis.readInt();
-			_operator = new float[operatorlength];
-			for (int i = 0; i < _operator.length; i++) {
-				_operator[i] = _dis.readFloat();
-			}
 		}
 	}
 }
