@@ -1,4 +1,4 @@
-package se.embargo.sonar.dsp;
+package se.embargo.sonogram.dsp;
 
 public class AverageFilter implements ISignalFilter {
 	private int _maxgenerations = 4, _generation = 0;

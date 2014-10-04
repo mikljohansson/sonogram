@@ -1,10 +1,10 @@
-package se.embargo.sonar.shader;
+package se.embargo.sonogram.shader;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import se.embargo.core.graphic.ShaderProgram;
-import se.embargo.sonar.dsp.ISignalFilter.Item;
+import se.embargo.sonogram.dsp.ISignalFilter.Item;
 import android.content.Context;
 import android.graphics.Rect;
 import android.opengl.GLES20;
@@ -17,7 +17,7 @@ public class PreviewRenderer implements GLSurfaceView.Renderer {
     private SonogramShader _shader;
     private PreviewShader _preview;
     
-    private float[] _operator, _channel0 = new float[0], _channel1 = new float[0];
+    private float[] _channel0 = new float[0], _channel1 = new float[0];
     
     public PreviewRenderer(Context context) {
     	_context = context;
@@ -55,14 +55,13 @@ public class PreviewRenderer implements GLSurfaceView.Renderer {
     public synchronized void onDrawFrame(GL10 glUnused) {
     	if (_channel0 != null && _channel1 != null) {
     		_program.draw();
-    		_shader.draw(_operator, _channel0, _channel1);
+    		_shader.draw(_channel0, _channel1);
     		_preview.draw();
     	}
     }
 
 	public synchronized void receive(Item item) {
-		final short[] samples = item.samples;
-		_operator = item.operator;
+		final float[] samples = item.matched;
 		
 		if (_channel0.length != samples.length / 2) {
 			_channel0 = new float[samples.length / 2];
@@ -73,8 +72,8 @@ public class PreviewRenderer implements GLSurfaceView.Renderer {
 		}
 
 		for (int i = 0, j = 0; i < samples.length; i += 2, j++) {
-			_channel0[j] = (float)samples[i] / Short.MAX_VALUE;
-			_channel1[j] = (float)samples[i + 1] / Short.MAX_VALUE;
+			_channel0[j] = samples[i];
+			_channel1[j] = samples[i + 1];
 		}
 	}
 }

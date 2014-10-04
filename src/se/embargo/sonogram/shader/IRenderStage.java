@@ -1,4 +1,4 @@
-package se.embargo.sonar.shader;
+package se.embargo.sonogram.shader;
 
 public interface IRenderStage {
 	public void draw();

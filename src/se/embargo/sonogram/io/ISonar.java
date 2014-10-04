@@ -1,6 +1,6 @@
-package se.embargo.sonar.io;
+package se.embargo.sonogram.io;
 
-import se.embargo.sonar.dsp.ISignalFilter;
+import se.embargo.sonogram.dsp.ISignalFilter;
 
 public interface ISonar {
 	public abstract void init(ISonarController controller, ISignalFilter filterS);

@@ -5,12 +5,12 @@
 	android:layout_height="match_parent"
 	android:orientation="vertical"
 	android:visibility="gone">
-	<se.embargo.sonar.widget.HistogramView
+	<se.embargo.sonogram.widget.HistogramView
 	    android:id="@+id/histogram" 
 		android:layout_width="match_parent"
 		android:layout_height="fill_parent"
 		android:layout_weight="1"/>
-	<se.embargo.sonar.widget.HistogramView
+	<se.embargo.sonogram.widget.HistogramView
 	    android:id="@+id/histogram2" 
 		android:layout_width="match_parent"
 		android:layout_height="fill_parent"

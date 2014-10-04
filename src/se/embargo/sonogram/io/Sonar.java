@@ -1,4 +1,4 @@
-package se.embargo.sonar.io;
+package se.embargo.sonogram.io;
 
 import java.util.Arrays;
 import java.util.Queue;
@@ -10,10 +10,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import se.embargo.core.concurrent.Parallel;
-import se.embargo.sonar.dsp.CompositeFilter;
-import se.embargo.sonar.dsp.FramerateCounter;
-import se.embargo.sonar.dsp.ISignalFilter;
-import se.embargo.sonar.dsp.Signals;
+import se.embargo.sonogram.dsp.CompositeFilter;
+import se.embargo.sonogram.dsp.FramerateCounter;
+import se.embargo.sonogram.dsp.ISignalFilter;
+import se.embargo.sonogram.dsp.Signals;
 import android.content.Context;
 import android.graphics.Rect;
 import android.media.AudioFormat;

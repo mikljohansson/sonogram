@@ -1,6 +1,6 @@
-package se.embargo.sonar.dsp;
+package se.embargo.sonogram.dsp;
 import android.util.Log;
-import se.embargo.sonar.dsp.ISignalFilter;
+import se.embargo.sonogram.dsp.ISignalFilter;
 
 public class FramerateCounter implements ISignalFilter {
 	private static final String TAG = "FramerateFilter";

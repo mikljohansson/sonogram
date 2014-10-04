@@ -1,7 +1,7 @@
-package se.embargo.sonar.shader;
+package se.embargo.sonogram.shader;
 
-import se.embargo.sonar.dsp.ISignalFilter;
-import se.embargo.sonar.io.ISonarController;
+import se.embargo.sonogram.dsp.ISignalFilter;
+import se.embargo.sonogram.io.ISonarController;
 import android.content.Context;
 import android.graphics.Rect;
 import android.opengl.GLSurfaceView;

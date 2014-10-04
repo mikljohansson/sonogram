@@ -7,7 +7,7 @@
        android:orientation="vertical">
 	<LinearLayout 
 		style="@style/PreviewButtonLayout">
-		<se.embargo.sonar.widget.PreferenceButton 
+		<se.embargo.sonogram.widget.PreferenceButton 
 			style="@style/PreviewButton"
 			android:id="@+id/visualizationButton" 
 			android:src="@drawable/ic_button_line_chart"
@@ -15,7 +15,7 @@
 	</LinearLayout>
 	<LinearLayout 
 		style="@style/PreviewButtonLayout">
-		<se.embargo.sonar.widget.PreferenceButton 
+		<se.embargo.sonogram.widget.PreferenceButton 
 			style="@style/PreviewButton"
 			android:id="@+id/focusButton" 
 			android:src="@drawable/ic_button_focus"
@@ -23,7 +23,7 @@
 	</LinearLayout>
 	<LinearLayout 
 		style="@style/PreviewButtonLayout">
-		<se.embargo.sonar.widget.PreferenceButton 
+		<se.embargo.sonogram.widget.PreferenceButton 
 			style="@style/PreviewButton"
 			android:id="@+id/editSettingsButton" 
 			android:src="@drawable/ic_button_settings"

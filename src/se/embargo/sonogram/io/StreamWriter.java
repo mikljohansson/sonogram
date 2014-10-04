@@ -1,4 +1,4 @@
-package se.embargo.sonar.io;
+package se.embargo.sonogram.io;
 
 import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
@@ -7,7 +7,7 @@ import java.io.OutputStream;
 import java.util.zip.DeflaterOutputStream;
 
 import se.embargo.core.databinding.observable.IObservableValue;
-import se.embargo.sonar.dsp.ISignalFilter;
+import se.embargo.sonogram.dsp.ISignalFilter;
 import android.util.Log;
 
 public class StreamWriter implements ISignalFilter {

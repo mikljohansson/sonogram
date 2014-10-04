@@ -4,8 +4,8 @@
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
 	android:orientation="vertical">
-	<se.embargo.sonar.shader.SonogramSurface
-	    android:id="@+id/sonogram_surface" 
+	<se.embargo.sonogram.shader.SonogramSurface
+	    android:id="@+id/sonogramSurface" 
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"/>
 </LinearLayout>

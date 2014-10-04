@@ -1,7 +1,7 @@
-package se.embargo.sonar.widget;
+package se.embargo.sonogram.widget;
 
-import se.embargo.sonar.dsp.ISignalFilter;
-import se.embargo.sonar.io.ISonarController;
+import se.embargo.sonogram.dsp.ISignalFilter;
+import se.embargo.sonogram.io.ISonarController;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;

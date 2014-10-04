@@ -1,4 +1,4 @@
-package se.embargo.sonar.io;
+package se.embargo.sonogram.io;
 
 abstract class SonarWorker implements Runnable {
 	private Thread _thread;

@@ -13,10 +13,7 @@
 		android:layout_height="match_parent"
 		android:layout_weight="1">
 	
-        <include layout="@layout/sonogram"/>
-        <include layout="@layout/histogram"/>
-        <include layout="@layout/dual_histogram"/>
-	    <include layout="@layout/detailed_preferences"/>
+        <include layout="@layout/shader_sonogram"/>
 	</RelativeLayout>
 
 	<include layout="@layout/control_bar"/>

@@ -1,11 +1,11 @@
-package se.embargo.sonar.shader;
+package se.embargo.sonogram.shader;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
 import se.embargo.core.graphic.ShaderProgram;
-import se.embargo.sonar.R;
+import se.embargo.sonogram.R;
 import android.graphics.Rect;
 import android.opengl.GLES20;
 import android.opengl.Matrix;

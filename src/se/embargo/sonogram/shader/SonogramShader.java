@@ -1,8 +1,8 @@
-package se.embargo.sonar.shader;
+package se.embargo.sonogram.shader;
 
 import se.embargo.core.graphic.ShaderProgram;
 import se.embargo.core.graphic.Shaders;
-import se.embargo.sonar.R;
+import se.embargo.sonogram.R;
 import android.opengl.GLES20;
 
 public class SonogramShader {
@@ -12,14 +12,13 @@ public class SonogramShader {
 	
     private final ShaderProgram _program;
     //private final int _operatorTexture, _samplesTexture;
-    private int _operatorLocation, _channelLocation0, _channelLocation1;
+    private int _channelLocation0, _channelLocation1;
 
 	public SonogramShader(ShaderProgram program) {
 		_program = program;
 		//_samplesLocation = _program.getUniformLocation("samples");
 		_channelLocation0 = _program.getUniformLocation("channel0");
 		_channelLocation1 = _program.getUniformLocation("channel1");
-		_operatorLocation = _program.getUniformLocation("operator");
 		
         // Create the external texture which the camera preview is written to
 		/*
@@ -68,14 +67,11 @@ public class SonogramShader {
         */
 	}
 	
-	public void draw(float[] operator, float[] channel0, float[] channel1) {
+	public void draw(float[] channel0, float[] channel1) {
         GLES20.glUniform1fv(_channelLocation0, channel0.length, channel0, 0);
         Shaders.checkGlError("glUniform4fv");
         
         GLES20.glUniform1fv(_channelLocation1, channel1.length, channel1, 0);
-        Shaders.checkGlError("glUniform4fv");
-
-        GLES20.glUniform1fv(_operatorLocation, operator.length, operator, 0);
         Shaders.checkGlError("glUniform4fv");
 
         // Bind the samples texture

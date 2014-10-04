@@ -1,4 +1,4 @@
-package se.embargo.sonar.io;
+package se.embargo.sonogram.io;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.InflaterInputStream;
 
 import se.embargo.core.concurrent.Parallel;
-import se.embargo.sonar.dsp.ISignalFilter;
+import se.embargo.sonogram.dsp.ISignalFilter;
 import android.graphics.Rect;
 import android.util.Log;
 

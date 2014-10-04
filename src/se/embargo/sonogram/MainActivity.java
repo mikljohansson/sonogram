@@ -1,4 +1,4 @@
-package se.embargo.sonar;
+package se.embargo.sonogram;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -10,26 +10,25 @@ import se.embargo.core.databinding.observable.ChangeEvent;
 import se.embargo.core.databinding.observable.IChangeListener;
 import se.embargo.core.databinding.observable.IObservableValue;
 import se.embargo.core.databinding.observable.WritableValue;
+import se.embargo.core.io.Files;
 import se.embargo.core.widget.ListPreferenceDialog;
 import se.embargo.core.widget.SeekBarDialog;
-import se.embargo.sonar.dsp.CompositeFilter;
-import se.embargo.sonar.dsp.FramerateCounter;
-import se.embargo.sonar.dsp.ISignalFilter;
-import se.embargo.sonar.dsp.HistogramFilter;
-import se.embargo.sonar.dsp.MatchedFilter;
-import se.embargo.sonar.dsp.SonogramFilter;
-import se.embargo.sonar.io.ISonar;
-import se.embargo.sonar.io.Sonar;
-import se.embargo.sonar.io.StreamReader;
-import se.embargo.sonar.io.StreamWriter;
-import se.embargo.sonar.widget.HistogramView;
-import se.embargo.sonar.widget.SonogramView;
+import se.embargo.sonogram.dsp.CompositeFilter;
+import se.embargo.sonogram.dsp.FramerateCounter;
+import se.embargo.sonogram.dsp.ISignalFilter;
+import se.embargo.sonogram.dsp.MatchedFilter;
+import se.embargo.sonogram.io.ISonar;
+import se.embargo.sonogram.io.Sonar;
+import se.embargo.sonogram.io.StreamReader;
+import se.embargo.sonogram.io.StreamWriter;
+import se.embargo.sonogram.shader.SonogramSurface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
@@ -46,13 +45,13 @@ import com.actionbarsherlock.view.MenuItem;
 public class MainActivity extends SherlockFragmentActivity {
 	private static final String TAG = "MainActivity";
 
-	private static final String PREFS_NAMESPACE = "se.embargo.sonar";
+	private static final String PREFS_NAMESPACE = "se.embargo.sonogram";
 	private static final String PREF_IMAGECOUNT = "imagecount";
 	private static final String PREF_BASELINE = "baseline";
 	private static final float PREF_BASELINE_DEFAULT = 0.12f;
 	private static final String PREF_VISUALIZATION = "visualization";
 	
-	private static final String DIRECTORY = "Sonar";
+	private static final String DIRECTORY = "Sonogram";
 	private static final String FILENAME_PATTERN = "IMGS%04d";
 
 	/**
@@ -65,7 +64,7 @@ public class MainActivity extends SherlockFragmentActivity {
 	 */
 	private PreferencesListener _prefsListener = new PreferencesListener();
 	
-	private View _sonogramLayout, _histogramLayout, _dualHistogramLayout;
+	private SonogramSurface _sonogram;
 	private ISonar _sonar;
 	
 	/**
@@ -97,14 +96,12 @@ public class MainActivity extends SherlockFragmentActivity {
 		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
 		
 		setContentView(R.layout.main_activity);
-		_sonogramLayout = findViewById(R.id.sonogramLayout);
-		_histogramLayout = findViewById(R.id.histogramLayout);
-		_dualHistogramLayout = findViewById(R.id.dualHistogramLayout);
+		_sonogram = (SonogramSurface)findViewById(R.id.sonogramSurface);
 
 		_sonar = null;
 		if (Intent.ACTION_VIEW.equals(getIntent().getAction())) {
 			Uri url = getIntent().getData();
-			//Uri url = Uri.parse("file:///storage/emulated/0/Pictures/Sonar/IMGS0009.sonar");
+			//Uri url = Uri.parse("file:///storage/emulated/0/Pictures/Sonar/IMGS0048.sonar");
 			if (url != null) {
 				Log.i(TAG, "Opening sonar dump: " + url);
 				_sonar = new StreamReader(url.getPath());
@@ -230,12 +227,15 @@ public class MainActivity extends SherlockFragmentActivity {
 	private class TakePhotoListener implements View.OnClickListener, StreamWriter.IStreamListener {
 		private ISignalFilter _prevFilter;
 		private StreamWriter _outputFilter;
+		private File _file;
 
 		@Override
 		public void onClick(View v) {
 			OutputStream os;
+			_file = createOutputFile(null, "sonar");
+			
 			try {
-				os = new FileOutputStream(createOutputFile(null, "sonar"));
+				os = new FileOutputStream(_file);
 			}
 			catch (FileNotFoundException e) {
 				Log.e(TAG, e.getMessage(), e);
@@ -260,7 +260,7 @@ public class MainActivity extends SherlockFragmentActivity {
 					_sonar.init(_sonar.getController(), _prevFilter);
 					_outputFilter = null;
 					_prevFilter = null;
-					Toast.makeText(MainActivity.this, R.string.saved_sonar_recording, Toast.LENGTH_SHORT).show();
+					Toast.makeText(MainActivity.this, getString(R.string.saved_sonar_recording, Files.getTrailingPath(_file.toString(), 3)), Toast.LENGTH_SHORT).show();
 				}
 			});
 		}
@@ -360,62 +360,21 @@ public class MainActivity extends SherlockFragmentActivity {
 		@Override
 		public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {
 			if (PREF_VISUALIZATION.equals(key)) {
-				String value = prefs.getString(PREF_VISUALIZATION, getString(R.string.pref_visualization_default));
-				_sonogramLayout.setVisibility(View.GONE);
-				_histogramLayout.setVisibility(View.GONE);
-				_dualHistogramLayout.setVisibility(View.GONE);
+				//String value = prefs.getString(PREF_VISUALIZATION, getString(R.string.pref_visualization_default));
+				_sonar.init(_sonogram, new CompositeFilter(new MatchedFilter(), _sonogram, new FramerateCounter()));
 				
-				if ("histogram".equals(value)) {
-					HistogramView histogram = (HistogramView)_histogramLayout.findViewById(R.id.histogram);
-					_sonar.init(histogram, new CompositeFilter(new HistogramFilter(), new HistogramFilter(1).reduce(true), /*new AverageFilter(), */histogram, new FramerateCounter()));
-					_histogramLayout.setVisibility(View.VISIBLE);
-					
-					histogram.setZoom(3, 0, histogram.getWindow().height());
-				}
-				else if ("dual_histogram".equals(value)) {
-					HistogramView histogram = (HistogramView)_dualHistogramLayout.findViewById(R.id.histogram);
-					HistogramView histogram2 = (HistogramView)_dualHistogramLayout.findViewById(R.id.histogram2);
-					
-					_sonar.init(
-						new CompositeSonarController(histogram, histogram2),
-						new CompositeFilter(
-							new CompositeFilter(new HistogramFilter(0), /*new AverageFilter(), */histogram),
-							new CompositeFilter(new HistogramFilter(1), /*new MatchedFilter(1).reduce(true),*/ /*new AverageFilter(), */histogram2), 
-							new FramerateCounter()));
-
-					_dualHistogramLayout.setVisibility(View.VISIBLE);
-					
-					histogram.setZoom(3, 0, histogram.getWindow().bottom);
-					histogram2.setZoom(3, 0, histogram2.getWindow().bottom);
-				}
-				else {
-					SonogramView sonogram = (SonogramView)_sonogramLayout.findViewById(R.id.sonogram);
-					_sonar.init(sonogram, new CompositeFilter(
-						new MatchedFilter(),
-						new SonogramFilter(_baseline)/*, new AverageFilter()*/, sonogram, new FramerateCounter()));
-					_sonogramLayout.setVisibility(View.VISIBLE);
-					
-					sonogram.setZoom(10, sonogram.getResolution().centerX(), sonogram.getWindow().top);
-				}
-
+				// Scale the surface to avoid rendering the full resolution
 				/*
-				if (_sonogramSurface != null) {
-					
-					_sonar.setController(_sonogramSurface);
-					_sonar.setFilter(new CompositeFilter(_sonogramSurface, new FramerateCounter()));
-					
-					// Scale the surface to avoid rendering the full resolution
-					DisplayMetrics dm = new DisplayMetrics();
-					getWindowManager().getDefaultDisplay().getMetrics(dm);
-					
-					float scale = 0.25f;
-					int width = dm.widthPixels, height = (int) dm.heightPixels;
-					int scaledwidth = (int)(width * scale);
-					int scaledheight = (int)(height * scale);
+				DisplayMetrics dm = new DisplayMetrics();
+				getWindowManager().getDefaultDisplay().getMetrics(dm);
+				
+				float scale = 0.25f;
+				int width = dm.widthPixels, height = (int) dm.heightPixels;
+				int scaledwidth = (int)(width * scale);
+				int scaledheight = (int)(height * scale);
 
-					if (scaledwidth != width || scaledheight != height) {
-						_sonogramSurface.getHolder().setFixedSize(scaledwidth, scaledheight);		
-					}
+				if (scaledwidth != width || scaledheight != height) {
+					_sonogram.getHolder().setFixedSize(scaledwidth, scaledheight);		
 				}
 				*/
 			}

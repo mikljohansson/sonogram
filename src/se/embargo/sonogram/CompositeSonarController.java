@@ -1,10 +1,10 @@
-package se.embargo.sonar;
+package se.embargo.sonogram;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import se.embargo.sonar.io.ISonarController;
+import se.embargo.sonogram.io.ISonarController;
 
 import android.graphics.Rect;
 

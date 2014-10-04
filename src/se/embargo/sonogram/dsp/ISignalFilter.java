@@ -1,4 +1,4 @@
-package se.embargo.sonar.dsp;
+package se.embargo.sonogram.dsp;
 
 import android.graphics.Rect;
 
