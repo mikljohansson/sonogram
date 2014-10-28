@@ -11,6 +11,8 @@ public class SonogramSurface extends GLSurfaceView implements ISonarController, 
 	private final PreviewRenderer _renderer;
 	private Rect _resolution;
 
+	public enum Visualization { Sonogram, Histogram };
+	
 	public SonogramSurface(Context context, AttributeSet attrs) {
 		super(context, attrs);
 		setEGLContextClientVersion(2);
@@ -21,6 +23,10 @@ public class SonogramSurface extends GLSurfaceView implements ISonarController, 
 
 	public SonogramSurface(Context context) {
 		this(context, null);
+	}
+	
+	public void setVisualization(Visualization visualization) {
+		_renderer.setVisualization(visualization);
 	}
 
 	@Override

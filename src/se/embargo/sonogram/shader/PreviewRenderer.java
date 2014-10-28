@@ -5,6 +5,7 @@ import javax.microedition.khronos.opengles.GL10;
 
 import se.embargo.core.graphic.ShaderProgram;
 import se.embargo.sonogram.dsp.ISignalFilter.Item;
+import se.embargo.sonogram.shader.SonogramSurface.Visualization;
 import android.content.Context;
 import android.graphics.Rect;
 import android.opengl.GLES20;
@@ -14,14 +15,35 @@ public class PreviewRenderer implements GLSurfaceView.Renderer {
     private Context _context;
     private ShaderProgram _program;
     
-    private SonogramShader _shader;
+    private IVisualizationShader _shader;
     private PreviewShader _preview;
+    private SonogramSurface.Visualization _visualization = Visualization.Sonogram, _prevVisualization;
     
-    private float[] _channel0 = new float[0], _channel1 = new float[0];
+    private float[] _samples = new float[0], _channel1 = new float[0];
     
     public PreviewRenderer(Context context) {
     	_context = context;
     }
+
+	public synchronized void setVisualization(SonogramSurface.Visualization visualization) {
+		_visualization = visualization;
+	}
+	
+	private void createShaderProgram() {
+		switch (_visualization) {
+			case Sonogram:
+				_program = new ShaderProgram(_context, PreviewShader.SHADER_SOURCE_ID, SonogramShader.SHADER_SOURCE_ID);
+				_shader = new SonogramShader(_program);
+				break;
+				
+			case Histogram:
+				_program = new ShaderProgram(_context, PreviewShader.SHADER_SOURCE_ID, HistogramShader.SHADER_SOURCE_ID);
+				_shader = new SonogramShader(_program);
+				break;
+		}
+		
+		_prevVisualization = _visualization;
+	}
     
     @Override
     public void onSurfaceCreated(GL10 glUnused, EGLConfig config) {
@@ -38,8 +60,7 @@ public class PreviewRenderer implements GLSurfaceView.Renderer {
 
     	// Background color
     	GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    	
-    	_program = new ShaderProgram(_context, PreviewShader.SHADER_SOURCE_ID, SonogramShader.SHADER_SOURCE_ID);
+    	createShaderProgram();
     }
 
     @Override
@@ -48,32 +69,26 @@ public class PreviewRenderer implements GLSurfaceView.Renderer {
 
         Rect previewSize = new Rect(0, 0, 100, 100);        
     	_preview = new PreviewShader(_program, previewSize, width, height);
-    	_shader = new SonogramShader(_program);
     }
 
     @Override
     public synchronized void onDrawFrame(GL10 glUnused) {
-    	if (_channel0 != null && _channel1 != null) {
+    	if (_visualization != _prevVisualization) {
+    		createShaderProgram();
+    	}
+    	
+    	if (_samples != null && _channel1 != null) {
     		_program.draw();
-    		_shader.draw(_channel0, _channel1);
+    		_shader.draw(_samples);
     		_preview.draw();
     	}
     }
 
 	public synchronized void receive(Item item) {
-		final float[] samples = item.matched;
-		
-		if (_channel0.length != samples.length / 2) {
-			_channel0 = new float[samples.length / 2];
+		if (_samples.length != item.matched.length) {
+			_samples = new float[item.matched.length];
 		}
 		
-		if (_channel1.length != samples.length / 2) {
-			_channel1 = new float[samples.length / 2];
-		}
-
-		for (int i = 0, j = 0; i < samples.length; i += 2, j++) {
-			_channel0[j] = samples[i];
-			_channel1[j] = samples[i + 1];
-		}
+		System.arraycopy(item.matched, 0, _samples, 0, item.matched.length);
 	}
 }

@@ -12,7 +12,6 @@ import se.embargo.core.databinding.observable.IObservableValue;
 import se.embargo.core.databinding.observable.WritableValue;
 import se.embargo.core.io.Files;
 import se.embargo.core.widget.ListPreferenceDialog;
-import se.embargo.core.widget.SeekBarDialog;
 import se.embargo.sonogram.dsp.CompositeFilter;
 import se.embargo.sonogram.dsp.FramerateCounter;
 import se.embargo.sonogram.dsp.ISignalFilter;
@@ -22,13 +21,13 @@ import se.embargo.sonogram.io.Sonar;
 import se.embargo.sonogram.io.StreamReader;
 import se.embargo.sonogram.io.StreamWriter;
 import se.embargo.sonogram.shader.SonogramSurface;
+import se.embargo.sonogram.widget.FocusPreferenceDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
-import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
@@ -47,8 +46,14 @@ public class MainActivity extends SherlockFragmentActivity {
 
 	private static final String PREFS_NAMESPACE = "se.embargo.sonogram";
 	private static final String PREF_IMAGECOUNT = "imagecount";
+	
 	private static final String PREF_BASELINE = "baseline";
 	private static final float PREF_BASELINE_DEFAULT = 0.12f;
+	
+	private static final String PREF_AUTOFOCUS = "autofocus";
+	private static final String PREF_AUTOFOCUS_VALUE = "autofocusvalue";
+	private static final boolean PREF_AUTOFOCUS_DEFAULT = true;
+	
 	private static final String PREF_VISUALIZATION = "visualization";
 	
 	private static final String DIRECTORY = "Sonogram";
@@ -77,6 +82,8 @@ public class MainActivity extends SherlockFragmentActivity {
 	 */
 	private IObservableValue<RecordState> _cameraState = new WritableValue<RecordState>(RecordState.Picture);
 	private IObservableValue<Float> _baseline;
+	private IObservableValue<Boolean> _autofocus;
+	private IObservableValue<Float> _autofocusvalue;
 	
 	@Override
 	public void onCreate(Bundle state) {
@@ -84,6 +91,17 @@ public class MainActivity extends SherlockFragmentActivity {
 
 		_prefs = getSharedPreferences(PREFS_NAMESPACE, MODE_PRIVATE);
 		_baseline = PreferenceProperties.floating(PREF_BASELINE, PREF_BASELINE_DEFAULT).observe(_prefs);
+		_autofocus = PreferenceProperties.bool(PREF_AUTOFOCUS, PREF_AUTOFOCUS_DEFAULT).observe(_prefs);
+		
+		_autofocusvalue = PreferenceProperties.floating(PREF_AUTOFOCUS_VALUE, PREF_BASELINE_DEFAULT).observe(_prefs);
+		_autofocusvalue.addChangeListener(new IChangeListener<Float>() {
+			@Override
+			public void handleChange(final ChangeEvent<Float> event) {
+				if (_autofocus.getValue()) {
+					_baseline.setValue(event.getValue());
+				}
+			}
+		});
 		
 		// Keep screen on while this activity is focused 
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -99,9 +117,9 @@ public class MainActivity extends SherlockFragmentActivity {
 		_sonogram = (SonogramSurface)findViewById(R.id.sonogramSurface);
 
 		_sonar = null;
-		if (Intent.ACTION_VIEW.equals(getIntent().getAction())) {
-			Uri url = getIntent().getData();
-			//Uri url = Uri.parse("file:///storage/emulated/0/Pictures/Sonar/IMGS0048.sonar");
+		if (true || Intent.ACTION_VIEW.equals(getIntent().getAction())) {
+			//Uri url = getIntent().getData();
+			Uri url = Uri.parse("file:///storage/emulated/0/Pictures/Sonar/IMGS0048.sonar");
 			if (url != null) {
 				Log.i(TAG, "Opening sonar dump: " + url);
 				_sonar = new StreamReader(url.getPath());
@@ -109,7 +127,7 @@ public class MainActivity extends SherlockFragmentActivity {
 		}
 
 		if (_sonar == null) {
-			_sonar = new Sonar(this);
+			_sonar = new Sonar(this, _autofocusvalue);
 		}
 		
 		_prefsListener.onSharedPreferenceChanged(_prefs, PREF_VISUALIZATION);
@@ -176,9 +194,7 @@ public class MainActivity extends SherlockFragmentActivity {
 	private class FocusButtonListener implements View.OnClickListener {
 		@Override
 		public void onClick(View v) {
-			SeekBarDialog dialog = new SeekBarDialog(MainActivity.this, _baseline, 0.001f, -0.25f, 0.25f);
-			dialog.setFormat("%.03f");
-			dialog.show();
+			new FocusPreferenceDialog(MainActivity.this, _baseline, _autofocus, _autofocusvalue).show();
 		}
 	}
 
@@ -360,7 +376,14 @@ public class MainActivity extends SherlockFragmentActivity {
 		@Override
 		public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {
 			if (PREF_VISUALIZATION.equals(key)) {
-				//String value = prefs.getString(PREF_VISUALIZATION, getString(R.string.pref_visualization_default));
+				String value = prefs.getString(PREF_VISUALIZATION, getString(R.string.pref_visualization_default));
+				if ("histogram".equals(value)) {
+					_sonogram.setVisualization(SonogramSurface.Visualization.Histogram);
+				}
+				else {
+					_sonogram.setVisualization(SonogramSurface.Visualization.Sonogram);
+				}
+				
 				_sonar.init(_sonogram, new CompositeFilter(new MatchedFilter(), _sonogram, new FramerateCounter()));
 				
 				// Scale the surface to avoid rendering the full resolution

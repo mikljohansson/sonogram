@@ -1,5 +1,6 @@
 package se.embargo.sonogram.widget;
 
+import se.embargo.sonogram.R;
 import android.content.Context;
 import android.graphics.Color;
 import android.util.AttributeSet;
@@ -23,7 +24,7 @@ public class PreferenceButton extends ImageButton {
 	public boolean onTouchEvent(MotionEvent event) {
 		if (event.getAction() == MotionEvent.ACTION_DOWN) {
 			if (isEnabled()) {
-				setColorFilter(Color.argb(255, 51, 181, 229));
+				setColorFilter(getContext().getResources().getColor(R.color.highlight));
 			}
 		} 
 		else if (event.getAction() == MotionEvent.ACTION_UP) {

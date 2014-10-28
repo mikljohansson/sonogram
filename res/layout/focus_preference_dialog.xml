@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+	android:orientation="vertical">
+        
+    <TextView
+        android:id="@+id/textView1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/focus_title"
+        style="@style/TextAppearance.Section.Title"/>
+    
+    <View 
+        style="@style/Widget.Divider.Horizontal"/>
+    
+    <TextView
+        android:id="@+id/textView2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/focus_distance_description"
+        style="@style/TextAppearance.Section.Subtitle" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+    	android:orientation="horizontal" 
+		android:gravity="center_vertical"
+		android:padding="10dp">
+    
+	    <ToggleButton
+	        android:id="@+id/autoFocusButton"
+	        android:layout_width="wrap_content"
+	        android:layout_height="wrap_content"
+	        android:text="@string/btn_auto_focus"
+	        android:textOn="@string/btn_auto_focus"
+	        android:textOff="@string/btn_auto_focus" />
+	    
+	    <include layout="@layout/seekbar_dialog"/>
+	
+    </LinearLayout>
+</LinearLayout>

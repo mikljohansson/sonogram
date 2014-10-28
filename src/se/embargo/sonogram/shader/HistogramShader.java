@@ -5,16 +5,16 @@ import se.embargo.core.graphic.Shaders;
 import se.embargo.sonogram.R;
 import android.opengl.GLES20;
 
-public class SonogramShader implements IVisualizationShader {
-    public static final int SHADER_SOURCE_ID = R.raw.sonogram_shader;
+public class HistogramShader implements IVisualizationShader {
+    public static final int SHADER_SOURCE_ID = R.raw.histogram_shader;
 	
-	private static final String TAG = "SonogramShader";
+	private static final String TAG = "HistogramShader";
 	
     private final ShaderProgram _program;
     //private final int _operatorTexture, _samplesTexture;
     private int _samplesLocation;
 
-	public SonogramShader(ShaderProgram program) {
+	public HistogramShader(ShaderProgram program) {
 		_program = program;
 		_samplesLocation = _program.getUniformLocation("samples");
 		
@@ -69,7 +69,7 @@ public class SonogramShader implements IVisualizationShader {
 	public void draw(float[] samples) {
         GLES20.glUniform1fv(_samplesLocation, samples.length, samples, 0);
         Shaders.checkGlError("glUniform4fv");
-
+        
         // Bind the samples texture
         /*
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);

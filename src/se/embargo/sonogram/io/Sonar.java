@@ -1,20 +1,19 @@
 package se.embargo.sonogram.io;
 
-import java.util.Arrays;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import se.embargo.core.concurrent.Parallel;
+import se.embargo.core.databinding.observable.IObservableValue;
 import se.embargo.sonogram.dsp.CompositeFilter;
 import se.embargo.sonogram.dsp.FramerateCounter;
 import se.embargo.sonogram.dsp.ISignalFilter;
 import se.embargo.sonogram.dsp.Signals;
-import android.content.Context;
+import android.app.Activity;
 import android.graphics.Rect;
 import android.media.AudioFormat;
 import android.media.AudioManager;
@@ -66,13 +65,26 @@ public class Sonar implements ISonar {
 	 */
 	private AtomicInteger _outputDelay = new AtomicInteger(0);
 	
-	public Sonar(Context context) {}
+	/**
+	 * Activity that drives this sonar.
+	 */
+	private final Activity _context;
+	
+	/**
+	 * Detected distance between microphones in meters.
+	 */
+	private final IObservableValue<Float> _baseline;
+	
+	public Sonar(Activity context, IObservableValue<Float> baseline) {
+		_context = context;
+		_baseline = baseline;
+	}
 	
 	@Override
 	public synchronized void init(ISonarController controller, ISignalFilter filter) {
 		_controller = controller;
 		_controller.setSonarResolution(_resolution);
-		_filter = new CompositeFilter(new AudioSync(), filter);
+		_filter = new CompositeFilter(filter, new AudioSync());
 	}
 
 	@Override
@@ -222,14 +234,12 @@ public class Sonar implements ISonar {
 		}
 	}
 	
-	public class AudioSync implements ISignalFilter, Runnable {
+	public class AudioSync implements ISignalFilter {
 		private static final int ADJUSTINTERVAL = PULSEINTERVAL * 5, POSITIVEHITS = 2, TOLERANCE = 15, THRESHOLD = 3;
 		
-		private boolean _scheduled = false, _disabled = false;
+		private boolean _disabled = false;
 		private long _ts = 0;
-		private short[] _samples;
-		private int _maxpos = -1, _hitcount = 0;
-		private ExecutorService _executor = Executors.newCachedThreadPool();
+		private int _maxposa = -1, _maxposb = -1, _hitcount = 0;
 		
 		@Override
 		public synchronized void accept(Item item) {
@@ -237,75 +247,67 @@ public class Sonar implements ISonar {
 				return;
 			}
 
-			// Analyze samples to find pulse offset
+			// Analyze matched filter output to find pulse offset
 			long ts = System.currentTimeMillis();
-			if (ts - _ts >= ADJUSTINTERVAL && !_scheduled) {
-				if (_samples == null || _samples.length != item.samples.length) {
-					_samples = Arrays.copyOf(item.samples, item.samples.length);
-				}
-				else {
-					System.arraycopy(item.samples, 0, _samples, 0, item.samples.length);
-				}
+			if (ts - _ts >= ADJUSTINTERVAL) {
+				final float[] samples = item.matched;
+				float maxvala = 0.0f, maxvalb = 0.0f;
+				int maxposa = 0, maxposb = 0;
 				
-				_scheduled = true;
-				_executor.submit(this);
-			}
-		}
-
-		@Override
-		public void run() {
-			try {
-				final short[] samples = _samples;
-				final float[] operator = _operator;
-				float maxval = 0, maxshort = Short.MAX_VALUE;
-				int maxpos = 0;
-				int step = 2;				
-				
-				// Apply convolution to find maximum value
-				for (int i = 0, il = samples.length - operator.length * step; i < il; i += step) {
-					float acca = 0, accb = 0, acc;
-					for (int j = 0, is = i; j < operator.length; j++, is += step) {
-						acca += ((float)samples[is] / maxshort) * operator[j];
-						accb += ((float)samples[is + 1] / maxshort) * operator[j];
+				// Find maximum values in left/right channels
+				for (int i = 0; i < samples.length; i += 2) {
+					if (maxvala < Math.abs(samples[i])) {
+						maxvala = Math.abs(samples[i]);
+						maxposa = i / 2;
 					}
 					
-					acc = acca * accb;
-					if (maxval < Math.abs(acc)) {
-						maxval = Math.abs(acc);
-						maxpos = i / 2;
+					if (maxvalb < Math.abs(samples[i + 1])) {
+						maxvalb = Math.abs(samples[i + 1]);
+						maxposb = (i + 1) / 2;
 					}
 				}
 				
 				synchronized (this) {
-					Log.i(TAG, "Pulse found at offset " + maxpos);
+					Log.i(TAG, "Pulse found at offset " + maxposa);
 					int resolution = SAMPLES_LENGTH;
 
 					// Check if pulse was found in same position again (otherwise it's noise)
-					if (Math.abs(_maxpos - maxpos) < TOLERANCE) {
+					if (Math.abs(_maxposa - maxposa) < TOLERANCE && Math.abs(_maxposb - maxposb) < TOLERANCE) {
 						if (++_hitcount >= POSITIVEHITS) {
-							if (_maxpos < THRESHOLD) {
+							if (_maxposa < THRESHOLD) {
 								_disabled = true;
-								Log.i(TAG, "Pulse found at offset " + _maxpos + ", disabling further adjustment");
+								final float distance = Math.min(Math.abs(_maxposb - _maxposa), Math.abs(_maxposa - (_maxposb - samples.length / 2)));
+								final float baseline = distance / SAMPLERATE * Signals.SPEED;
+								Log.i(TAG, "Detected microphone distance is " + baseline + "m");
+								Log.i(TAG, "Pulse found at offset " + _maxposa + ", disabling further adjustment");
+								
+								_context.runOnUiThread(new Runnable() {
+									@Override
+									public void run() {
+										_baseline.setValue(baseline);
+									}
+								});
 							}
 							else {
-								_outputDelay.set((resolution - maxpos) % resolution);
-								Log.i(TAG, "Adjusting for pulse at offset " + maxpos);
+								_outputDelay.set((resolution - maxposa) % resolution);
+								Log.i(TAG, "Adjusting for pulse at offset " + maxposa);
 							}
 
-							_maxpos = 0;
+							_maxposb = _maxposb - _maxposa;
+							if (_maxposb < 0) {
+								_maxposb += samples.length / 2;
+							}
+							
+							_maxposa = 0;
 							_hitcount = 0;
 							_ts = System.currentTimeMillis();
 						}
 					}
 					else {
-						_maxpos = maxpos;
+						_maxposa = maxposa;
+						_maxposb = maxposb;
 						_hitcount = 0;
 					}
-				}
-			}
-			finally {
-				synchronized (this) {
-					_scheduled = false;
 				}
 			}
 		}
