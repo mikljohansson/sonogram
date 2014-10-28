@@ -250,7 +250,7 @@ public class Sonar implements ISonar {
 			// Analyze matched filter output to find pulse offset
 			long ts = System.currentTimeMillis();
 			if (ts - _ts >= ADJUSTINTERVAL) {
-				final float[] samples = item.matched;
+				final float[] samples = item.output;
 				float maxvala = 0.0f, maxvalb = 0.0f;
 				int maxposa = 0, maxposb = 0;
 				

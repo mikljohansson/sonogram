@@ -85,10 +85,10 @@ public class PreviewRenderer implements GLSurfaceView.Renderer {
     }
 
 	public synchronized void receive(Item item) {
-		if (_samples.length != item.matched.length) {
-			_samples = new float[item.matched.length];
+		if (_samples.length != item.output.length) {
+			_samples = new float[item.output.length];
 		}
 		
-		System.arraycopy(item.matched, 0, _samples, 0, item.matched.length);
+		System.arraycopy(item.output, 0, _samples, 0, item.output.length);
 	}
 }

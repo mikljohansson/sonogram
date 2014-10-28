@@ -8,15 +8,13 @@ public interface ISignalFilter {
 		public float[] operator;
 		public final short[] samples;
 		public Rect window, canvas, resolution;
-		public float[] matched;
 		public float[] output;
 		public float maxvalue;
 		
 		public Item(float samplerate, int samplecount) {
 			this.samplerate = samplerate;
 			this.samples = new short[samplecount];
-			this.matched = new float[samplecount];
-			this.output = new float[0];
+			this.output = new float[samplecount];
 		}
 		
 		public void init(float[] operator, short[] samples, Rect window, Rect canvas, Rect resolution) {

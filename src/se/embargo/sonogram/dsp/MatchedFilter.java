@@ -19,7 +19,7 @@ public class MatchedFilter implements ISignalFilter {
 		public void run(Item item, int i, int last) {
 			final float[] operator = item.operator;
 			final short[] samples = item.samples;
-			final float[] matched = item.matched;
+			final float[] matched = item.output;
 			
 			// Divisor to get samples into [-1.0, 1.0] range
 			final float divisor = (float)Short.MAX_VALUE;
