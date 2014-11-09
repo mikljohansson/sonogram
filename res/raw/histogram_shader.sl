@@ -2,25 +2,22 @@
 precision mediump float;
 
 const int samplerate = 44100;		// Sample rate in Hz
-const int interval = 80;			// Ping interval in milliseconds
-const int pulserange = 15;			// Pulse range in milliseconds
-const int pulselength = 1;			// Pulse length in milliseconds
-const float baseline = 0.12;		// Distance between microphones in meters
-const float speed = 340.29;			// Speed of sound in m/s
+const int samplecount = 512;
 
-const int samplecount = samplerate * interval / 1000;
-const int rangecount = samplerate * pulserange / 1000;
-const int operatorcount = samplerate * pulselength / 1000;
-const float maxsampledistance = float(rangecount);
-
-uniform float samples[(samplecount + operatorcount) * 2];
+uniform float samples0[samplecount];
+uniform float samples1[samplecount];
 
 varying vec2 vTextureCoord;
 
 void main() {
-	int pos = int(float(samplecount) * vTextureCoord.y) * 2;
+	int pos = int(float(samplecount) * vTextureCoord.y);
+	
 	float upper = step(0.5, vTextureCoord.x);
-	float sample = log2(log2(samples[pos + int(upper)] + 1.0) + 1.0);
-	float value = step((vTextureCoord.x - 0.5 * upper) * 2.0, sample);
-	gl_FragColor = vec4(value, value, value, 1.0);
+	float lower = step(vTextureCoord.x, 0.5);
+	float sample = abs(samples0[pos] * upper + samples1[pos] * lower);
+	
+	float value = log2(log2(sample + 1.0) + 1.0);
+	float color = step((vTextureCoord.x - 0.5 * upper) * 2.0, value * 0.9 + 0.23 * lower);
+	
+	gl_FragColor = vec4(color, color, color, 1.0);
 }

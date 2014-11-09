@@ -11,7 +11,7 @@ public class SonogramSurface extends GLSurfaceView implements ISonarController, 
 	private final PreviewRenderer _renderer;
 	private Rect _resolution;
 
-	public enum Visualization { Sonogram, Histogram };
+	public enum Visualization { Sonogram, SonogramWavelet, Histogram };
 	
 	public SonogramSurface(Context context, AttributeSet attrs) {
 		super(context, attrs);

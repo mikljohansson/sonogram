@@ -6,17 +6,16 @@ import se.embargo.sonogram.R;
 import android.opengl.GLES20;
 
 public class SonogramShader implements IVisualizationShader {
-    public static final int SHADER_SOURCE_ID = R.raw.sonogram_shader;
-	
 	private static final String TAG = "SonogramShader";
 	
     private final ShaderProgram _program;
     //private final int _operatorTexture, _samplesTexture;
-    private int _samplesLocation;
+    private int _samplesLocation0, _samplesLocation1;
 
 	public SonogramShader(ShaderProgram program) {
 		_program = program;
-		_samplesLocation = _program.getUniformLocation("samples");
+		_samplesLocation0 = _program.getUniformLocation("samples0");
+		_samplesLocation1 = _program.getUniformLocation("samples1");
 		
         // Create the external texture which the camera preview is written to
 		/*
@@ -66,9 +65,10 @@ public class SonogramShader implements IVisualizationShader {
 	}
 	
 	@Override
-	public void draw(float[] samples) {
-        GLES20.glUniform1fv(_samplesLocation, samples.length, samples, 0);
-        Shaders.checkGlError("glUniform4fv");
+	public void draw(float[] samples0, float[] samples1) {
+        GLES20.glUniform1fv(_samplesLocation0, Math.min(samples0.length, 512), samples0, 0);
+        GLES20.glUniform1fv(_samplesLocation1, Math.min(samples1.length, 512), samples1, 0);
+        Shaders.checkGlError("glUniform1fv");
 
         // Bind the samples texture
         /*

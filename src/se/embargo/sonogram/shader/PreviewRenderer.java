@@ -4,6 +4,7 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import se.embargo.core.graphic.ShaderProgram;
+import se.embargo.sonogram.R;
 import se.embargo.sonogram.dsp.ISignalFilter.Item;
 import se.embargo.sonogram.shader.SonogramSurface.Visualization;
 import android.content.Context;
@@ -19,7 +20,7 @@ public class PreviewRenderer implements GLSurfaceView.Renderer {
     private PreviewShader _preview;
     private SonogramSurface.Visualization _visualization = Visualization.Sonogram, _prevVisualization;
     
-    private float[] _samples = new float[0], _channel1 = new float[0];
+    private float[] _samples0 = new float[0], _samples1 = new float[0];
     
     public PreviewRenderer(Context context) {
     	_context = context;
@@ -32,12 +33,17 @@ public class PreviewRenderer implements GLSurfaceView.Renderer {
 	private void createShaderProgram() {
 		switch (_visualization) {
 			case Sonogram:
-				_program = new ShaderProgram(_context, PreviewShader.SHADER_SOURCE_ID, SonogramShader.SHADER_SOURCE_ID);
+				_program = new ShaderProgram(_context, PreviewShader.SHADER_SOURCE_ID, R.raw.sonogram_shader);
+				_shader = new SonogramShader(_program);
+				break;
+				
+			case SonogramWavelet:
+				_program = new ShaderProgram(_context, PreviewShader.SHADER_SOURCE_ID, R.raw.sonogram_shader_wavelet);
 				_shader = new SonogramShader(_program);
 				break;
 				
 			case Histogram:
-				_program = new ShaderProgram(_context, PreviewShader.SHADER_SOURCE_ID, HistogramShader.SHADER_SOURCE_ID);
+				_program = new ShaderProgram(_context, PreviewShader.SHADER_SOURCE_ID, R.raw.histogram_shader);
 				_shader = new SonogramShader(_program);
 				break;
 		}
@@ -77,18 +83,22 @@ public class PreviewRenderer implements GLSurfaceView.Renderer {
     		createShaderProgram();
     	}
     	
-    	if (_samples != null && _channel1 != null) {
+    	if (_samples0 != null && _samples1 != null) {
     		_program.draw();
-    		_shader.draw(_samples);
+    		_shader.draw(_samples0, _samples1);
     		_preview.draw();
     	}
     }
 
 	public synchronized void receive(Item item) {
-		if (_samples.length != item.output.length) {
-			_samples = new float[item.output.length];
+		if (_samples0.length != item.output.length / 2) {
+			_samples0 = new float[item.output.length / 2];
+			_samples1 = new float[item.output.length / 2];
 		}
 		
-		System.arraycopy(item.output, 0, _samples, 0, item.output.length);
+		for (int i = 0, j = 0; i < _samples0.length; i++, j += 2) {
+			_samples0[i] = item.output[j];
+			_samples1[i] = item.output[j + 1];
+		}
 	}
 }

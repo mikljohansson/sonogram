@@ -4,7 +4,7 @@ import se.embargo.core.concurrent.IForBody;
 import se.embargo.core.concurrent.Parallel;
 import android.annotation.SuppressLint;
 
-public class MatchedFilter implements ISignalFilter {
+public class CrossCorrelationFilter implements ISignalFilter {
 	private final FilterBody _body = new FilterBody();
 	
 	@Override

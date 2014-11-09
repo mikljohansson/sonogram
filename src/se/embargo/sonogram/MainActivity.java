@@ -13,9 +13,12 @@ import se.embargo.core.databinding.observable.WritableValue;
 import se.embargo.core.io.Files;
 import se.embargo.core.widget.ListPreferenceDialog;
 import se.embargo.sonogram.dsp.CompositeFilter;
+import se.embargo.sonogram.dsp.CrossCorrelationFilter;
 import se.embargo.sonogram.dsp.FramerateCounter;
 import se.embargo.sonogram.dsp.ISignalFilter;
-import se.embargo.sonogram.dsp.MatchedFilter;
+import se.embargo.sonogram.dsp.MeanPeakDetector;
+import se.embargo.sonogram.dsp.MonoFilter;
+import se.embargo.sonogram.dsp.SmoothenFilter;
 import se.embargo.sonogram.io.ISonar;
 import se.embargo.sonogram.io.Sonar;
 import se.embargo.sonogram.io.StreamReader;
@@ -377,14 +380,33 @@ public class MainActivity extends SherlockFragmentActivity {
 		public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {
 			if (PREF_VISUALIZATION.equals(key)) {
 				String value = prefs.getString(PREF_VISUALIZATION, getString(R.string.pref_visualization_default));
+				CompositeFilter filter = new CompositeFilter(new CompositeFilter(
+					new SmoothenFilter()
+					, new MeanPeakDetector()
+					/*, new AmplificationFilter()
+					, new LeadingEdgeFilter()*/));
+				
 				if ("histogram".equals(value)) {
 					_sonogram.setVisualization(SonogramSurface.Visualization.Histogram);
+				}
+				else if ("raw".equals(value)) {
+					_sonogram.setVisualization(SonogramSurface.Visualization.Histogram);
+					filter = new CompositeFilter(
+						new MonoFilter()
+						, new SmoothenFilter()
+						, new MeanPeakDetector()
+						//, new AmplificationFilter() 
+						//, new LeadingEdgeFilter(0, 2)
+						);
+				}
+				else if ("sonogram_wavelet".equals(value)) {
+					_sonogram.setVisualization(SonogramSurface.Visualization.SonogramWavelet);
 				}
 				else {
 					_sonogram.setVisualization(SonogramSurface.Visualization.Sonogram);
 				}
 				
-				_sonar.init(_sonogram, new CompositeFilter(new MatchedFilter(), _sonogram, new FramerateCounter()));
+				_sonar.init(_sonogram, new CompositeFilter(new CrossCorrelationFilter(), filter, _sonogram, new FramerateCounter()));
 				
 				// Scale the surface to avoid rendering the full resolution
 				/*
