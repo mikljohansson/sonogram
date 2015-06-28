@@ -5,6 +5,7 @@ Highly experimental 2D sonogram using stereo microphones
 * Output signal is a chirped/frequency modulated mono signal
 * Input is recorded via the 2x microphones found on most phones 
 * Signal processing uses GPU based convolution with GLSL shaders
+* Triangulation uses the baseline/distance between microphones
 * Stereo sonogram and linear histogram views
 
 ## Development
