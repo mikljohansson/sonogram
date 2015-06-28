@@ -25,9 +25,9 @@ import android.util.Log;
 public class Sonar implements ISonar {
 	private static final String TAG = "Sonar";
 	
-	private static final int SAMPLERATE = 44100;
+	private static final int SAMPLERATE = 48000;
 	private static final int PULSEINTERVAL = 80;
-	private static final int PULSEDURATION = 1;
+	private static final int PULSEDURATION = 3;
 	private static final float PULSEAMPLITUDE = 0.9f;
 	
 	public static final int OPERATOR_LENGTH = SAMPLERATE * PULSEDURATION / 1000;

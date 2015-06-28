@@ -1,31 +1,33 @@
 #extension GL_OES_EGL_image_external : require
 precision mediump float;
 
-const int samplerate = 44100;		// Sample rate in Hz
-const float baseline = 0.12;		// Distance between microphones in meters
+#define OPERATOR_SIZE 144
+#define BUFFER_SIZE 256
+
+const int samplerate = 48000;		// Sample rate in Hz
+const float baseline = 0.143;		// Distance between microphones in meters
 const float speed = 340.29;			// Speed of sound in m/s
 
-const int samplecount = 512;
-const float maxsampledistance = float(samplecount);
-
-const float micoffset = (baseline / speed) * (float(samplerate) / maxsampledistance) / 2.0;
+const float micoffset = (baseline / speed) * (float(samplerate) / float(BUFFER_SIZE)) / 2.0;
 const vec2 micoffset0 = vec2(-0.11, -0.5 - micoffset);
 const vec2 micoffset1 = vec2(-0.11, -0.5 + micoffset);
 
-uniform float samples0[samplecount];
-uniform float samples1[samplecount];
+uniform float samples0[BUFFER_SIZE];
+uniform float samples1[BUFFER_SIZE];
+uniform float operator[OPERATOR_SIZE];
 
 varying vec2 vTextureCoord;
 
 void main() {
 	// Calculate the distance from this pixel to each of the microphones
-	int pos0 = int(length(vTextureCoord + micoffset0) * maxsampledistance);
-	int pos1 = int(length(vTextureCoord + micoffset1) * maxsampledistance);
+	int pos0 = int(length(vTextureCoord + micoffset0) * float(BUFFER_SIZE));
+	int pos1 = int(length(vTextureCoord + micoffset1) * float(BUFFER_SIZE));
 	
-	float sample0 = abs(samples0[pos0]);
-	float sample1 = abs(samples1[pos1]);
+	float sample = 0.0;
+	for (int i = 0; i < OPERATOR_SIZE; i++) {
+		sample += samples0[pos0 + i] * samples1[pos1 + i] * operator[i];
+	}
 	
-	float value = log2(log2(sample0 * sample1 + 1.0) + 1.0);
-	
+	float value = log2(log2(abs(sample) + 1.0) + 1.0);
 	gl_FragColor = vec4(value, value, value, 1.0);
 }

@@ -11,8 +11,11 @@ import android.content.Context;
 import android.graphics.Rect;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
+import android.util.Log;
 
 public class PreviewRenderer implements GLSurfaceView.Renderer {
+	private static final String TAG = "PreviewRenderer";
+	
     private Context _context;
     private ShaderProgram _program;
     
@@ -20,7 +23,7 @@ public class PreviewRenderer implements GLSurfaceView.Renderer {
     private PreviewShader _preview;
     private SonogramSurface.Visualization _visualization = Visualization.Sonogram, _prevVisualization;
     
-    private float[] _samples0 = new float[0], _samples1 = new float[0];
+    private float[] _operator, _samples0, _samples1;
     
     public PreviewRenderer(Context context) {
     	_context = context;
@@ -37,14 +40,14 @@ public class PreviewRenderer implements GLSurfaceView.Renderer {
 				_shader = new SonogramShader(_program);
 				break;
 				
-			case SonogramWavelet:
-				_program = new ShaderProgram(_context, PreviewShader.SHADER_SOURCE_ID, R.raw.sonogram_shader_wavelet);
-				_shader = new SonogramShader(_program);
+			case Triangulate:
+				_program = new ShaderProgram(_context, PreviewShader.SHADER_SOURCE_ID, R.raw.triangulate_shader);
+				_shader = new TriangulateShader(_program);
 				break;
 				
 			case Histogram:
 				_program = new ShaderProgram(_context, PreviewShader.SHADER_SOURCE_ID, R.raw.histogram_shader);
-				_shader = new SonogramShader(_program);
+				_shader = new TriangulateShader(_program);
 				break;
 		}
 		
@@ -53,7 +56,14 @@ public class PreviewRenderer implements GLSurfaceView.Renderer {
     
     @Override
     public void onSurfaceCreated(GL10 glUnused, EGLConfig config) {
-    	// Turn off unneeded features 
+		int[] params = new int[1];
+		GLES20.glGetIntegerv(GLES20.GL_MAX_FRAGMENT_UNIFORM_VECTORS, params, 0);
+		Log.i(TAG, "GL_MAX_FRAGMENT_UNIFORM_VECTORS = " + params[0]);
+		
+		GLES20.glGetIntegerv(GLES20.GL_MAX_VERTEX_UNIFORM_VECTORS, params, 0);
+		Log.i(TAG, "GL_MAX_VERTEX_UNIFORM_VECTORS = " + params[0]);
+
+		// Turn off unneeded features 
     	/*
     	GLES20.glDisable(GLES20.GL_BLEND);
     	GLES20.glDisable(GLES20.GL_CULL_FACE);
@@ -85,13 +95,13 @@ public class PreviewRenderer implements GLSurfaceView.Renderer {
     	
     	if (_samples0 != null && _samples1 != null) {
     		_program.draw();
-    		_shader.draw(_samples0, _samples1);
+    		_shader.draw(_operator, _samples0, _samples1);
     		_preview.draw();
     	}
     }
 
 	public synchronized void receive(Item item) {
-		if (_samples0.length != item.output.length / 2) {
+		if (_samples0 == null || _samples0.length != item.output.length / 2) {
 			_samples0 = new float[item.output.length / 2];
 			_samples1 = new float[item.output.length / 2];
 		}
@@ -100,5 +110,7 @@ public class PreviewRenderer implements GLSurfaceView.Renderer {
 			_samples0[i] = item.output[j];
 			_samples1[i] = item.output[j + 1];
 		}
+		
+		_operator = item.operator;
 	}
 }

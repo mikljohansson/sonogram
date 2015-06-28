@@ -31,6 +31,7 @@ import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
@@ -120,9 +121,9 @@ public class MainActivity extends SherlockFragmentActivity {
 		_sonogram = (SonogramSurface)findViewById(R.id.sonogramSurface);
 
 		_sonar = null;
-		if (true || Intent.ACTION_VIEW.equals(getIntent().getAction())) {
-			//Uri url = getIntent().getData();
-			Uri url = Uri.parse("file:///storage/emulated/0/Pictures/Sonar/IMGS0048.sonar");
+		if (Intent.ACTION_VIEW.equals(getIntent().getAction())) {
+			Uri url = getIntent().getData();
+			//Uri url = Uri.parse("file:///storage/emulated/0/Pictures/Sonar/IMGS0048.sonar");
 			if (url != null) {
 				Log.i(TAG, "Opening sonar dump: " + url);
 				_sonar = new StreamReader(url.getPath());
@@ -381,7 +382,8 @@ public class MainActivity extends SherlockFragmentActivity {
 			if (PREF_VISUALIZATION.equals(key)) {
 				String value = prefs.getString(PREF_VISUALIZATION, getString(R.string.pref_visualization_default));
 				CompositeFilter filter = new CompositeFilter(new CompositeFilter(
-					new SmoothenFilter()
+					new CrossCorrelationFilter()
+					, new SmoothenFilter()
 					, new MeanPeakDetector()
 					/*, new AmplificationFilter()
 					, new LeadingEdgeFilter()*/));
@@ -392,24 +394,25 @@ public class MainActivity extends SherlockFragmentActivity {
 				else if ("raw".equals(value)) {
 					_sonogram.setVisualization(SonogramSurface.Visualization.Histogram);
 					filter = new CompositeFilter(
-						new MonoFilter()
+						new CrossCorrelationFilter()
+						, new MonoFilter()
 						, new SmoothenFilter()
 						, new MeanPeakDetector()
 						//, new AmplificationFilter() 
 						//, new LeadingEdgeFilter(0, 2)
 						);
 				}
-				else if ("sonogram_wavelet".equals(value)) {
-					_sonogram.setVisualization(SonogramSurface.Visualization.SonogramWavelet);
+				else if ("triangulate".equals(value)) {
+					_sonogram.setVisualization(SonogramSurface.Visualization.Triangulate);
 				}
 				else {
 					_sonogram.setVisualization(SonogramSurface.Visualization.Sonogram);
+					filter = new CompositeFilter();
 				}
 				
-				_sonar.init(_sonogram, new CompositeFilter(new CrossCorrelationFilter(), filter, _sonogram, new FramerateCounter()));
+				_sonar.init(_sonogram, new CompositeFilter(filter, _sonogram, new FramerateCounter()));
 				
 				// Scale the surface to avoid rendering the full resolution
-				/*
 				DisplayMetrics dm = new DisplayMetrics();
 				getWindowManager().getDefaultDisplay().getMetrics(dm);
 				
@@ -421,7 +424,6 @@ public class MainActivity extends SherlockFragmentActivity {
 				if (scaledwidth != width || scaledheight != height) {
 					_sonogram.getHolder().setFixedSize(scaledwidth, scaledheight);		
 				}
-				*/
 			}
 		}
 	}

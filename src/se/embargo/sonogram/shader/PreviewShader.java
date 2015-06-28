@@ -109,6 +109,10 @@ public class PreviewShader implements IRenderStage {
         GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, 3);
         GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 1, 3);
         checkGlError("glDrawArrays");
+        
+        // Wait for draw to complete
+        GLES20.glFlush();
+        GLES20.glFinish();
     }
     
 	private void checkGlError(String op) {

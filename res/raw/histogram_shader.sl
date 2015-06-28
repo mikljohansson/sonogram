@@ -1,8 +1,8 @@
 #extension GL_OES_EGL_image_external : require
 precision mediump float;
 
-const int samplerate = 44100;		// Sample rate in Hz
-const int samplecount = 512;
+const int samplerate = 48000;		// Sample rate in Hz
+const int samplecount = 256;
 
 uniform float samples0[samplecount];
 uniform float samples1[samplecount];

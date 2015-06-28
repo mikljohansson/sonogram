@@ -2,18 +2,18 @@ package se.embargo.sonogram.shader;
 
 import se.embargo.core.graphic.ShaderProgram;
 import se.embargo.core.graphic.Shaders;
+import se.embargo.sonogram.R;
 import android.opengl.GLES20;
 
-public class SonogramShader implements IVisualizationShader {
+public class TriangulateShader implements IVisualizationShader {
 	private static final String TAG = "SonogramShader";
 	
     private final ShaderProgram _program;
     //private final int _operatorTexture, _samplesTexture;
-    private int _operatorLocation, _samplesLocation0, _samplesLocation1;
-    
-	public SonogramShader(ShaderProgram program) {
+    private int _samplesLocation0, _samplesLocation1;
+
+	public TriangulateShader(ShaderProgram program) {
 		_program = program;
-		_operatorLocation = _program.getUniformLocation("operator");
 		_samplesLocation0 = _program.getUniformLocation("samples0");
 		_samplesLocation1 = _program.getUniformLocation("samples1");
 		
@@ -66,8 +66,7 @@ public class SonogramShader implements IVisualizationShader {
 	
 	@Override
 	public void draw(float[] operator, float[] samples0, float[] samples1) {
-		GLES20.glUniform1fv(_operatorLocation, Math.min(operator.length, 44), operator, 0);
-		GLES20.glUniform1fv(_samplesLocation0, Math.min(samples0.length, 256), samples0, 0);
+        GLES20.glUniform1fv(_samplesLocation0, Math.min(samples0.length, 256), samples0, 0);
         GLES20.glUniform1fv(_samplesLocation1, Math.min(samples1.length, 256), samples1, 0);
         Shaders.checkGlError("glUniform1fv");
 
