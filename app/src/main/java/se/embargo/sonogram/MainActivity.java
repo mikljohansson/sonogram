@@ -25,6 +25,8 @@ import se.embargo.sonogram.io.StreamReader;
 import se.embargo.sonogram.io.StreamWriter;
 import se.embargo.sonogram.shader.SonogramSurface;
 import se.embargo.sonogram.widget.FocusPreferenceDialog;
+
+import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
@@ -40,12 +42,11 @@ import android.view.WindowManager;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
-import com.actionbarsherlock.app.SherlockFragmentActivity;
-import com.actionbarsherlock.view.Menu;
-import com.actionbarsherlock.view.MenuInflater;
-import com.actionbarsherlock.view.MenuItem;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 
-public class MainActivity extends SherlockFragmentActivity {
+public class MainActivity extends Activity {
 	private static final String TAG = "MainActivity";
 
 	private static final String PREFS_NAMESPACE = "se.embargo.sonogram";
@@ -175,7 +176,7 @@ public class MainActivity extends SherlockFragmentActivity {
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
-		MenuInflater inflater = getSupportMenuInflater();
+		MenuInflater inflater = getMenuInflater();
 		inflater.inflate(R.menu.main_options, menu);
 		return true;
 	}
