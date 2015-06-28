@@ -6,7 +6,7 @@
 	
 	<uses-sdk 
 		android:minSdkVersion="21"
-		android:targetSdkVersion="21"/>
+		android:targetSdkVersion="22"/>
 	
 	<!-- Used to record audio -->
 	<uses-permission android:name="android.permission.RECORD_AUDIO"/>
