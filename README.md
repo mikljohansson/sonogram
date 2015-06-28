@@ -1,5 +1,5 @@
 # Sonogram
-Highly experimental 2D sonogram using stereo microphones
+Experimental Android 2D sonogram using chirped sonar
 
 ## Features
 * Output signal is a chirped/frequency modulated mono signal
