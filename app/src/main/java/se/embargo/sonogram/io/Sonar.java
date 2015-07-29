@@ -27,8 +27,8 @@ public class Sonar implements ISonar {
 	
 	private static final int SAMPLERATE = 48000;
 	private static final int PULSEINTERVAL = 80;
-	private static final int PULSEDURATION = 3;
-	private static final float PULSEAMPLITUDE = 0.9f;
+	private static final int PULSEDURATION = 20;
+	private static final float PULSEAMPLITUDE = 1.0f;
 	
 	public static final int OPERATOR_LENGTH = SAMPLERATE * PULSEDURATION / 1000;
 	public static final int SAMPLES_LENGTH = SAMPLERATE * PULSEINTERVAL / 1000;
@@ -37,8 +37,8 @@ public class Sonar implements ISonar {
 	 * Sonar pulse time series.
 	 */
 	private static final float[] OPERATOR = Signals.createLinearChirp(
-		SAMPLERATE, PULSEDURATION, 
-		0, (float)SAMPLERATE / 2 - (float)SAMPLERATE / 16);
+		SAMPLERATE, PULSEDURATION,
+			(float)SAMPLERATE / 16f, (float)SAMPLERATE / 2f - (float)SAMPLERATE / 16f);
 	
 	private ISonarController _controller;
 	private final SonarWorker _inputworker = new AudioInputWorker(), _outputworker = new AudioOutputWorker();
@@ -239,7 +239,7 @@ public class Sonar implements ISonar {
 		
 		private boolean _disabled = false;
 		private long _ts = 0;
-		private int _maxposa = -1, _maxposb = -1, _hitcount = 0;
+		private int _maxposa = 0, _maxposb = 0, _hitcount = 0;
 		
 		@Override
 		public synchronized void accept(Item item) {
@@ -276,7 +276,7 @@ public class Sonar implements ISonar {
 						if (++_hitcount >= POSITIVEHITS) {
 							if (_maxposa < THRESHOLD) {
 								_disabled = true;
-								final float distance = Math.min(Math.abs(_maxposb - _maxposa), Math.abs(_maxposa - (_maxposb - samples.length / 2)));
+								final float distance = Math.min(Math.abs(_maxposb - _maxposa), Math.abs(_maxposa - Math.abs(_maxposb - samples.length / 2)));
 								final float baseline = distance / SAMPLERATE * Signals.SPEED;
 								Log.i(TAG, "Detected microphone distance is " + baseline + "m");
 								Log.i(TAG, "Pulse found at offset " + _maxposa + ", disabling further adjustment");
@@ -293,11 +293,7 @@ public class Sonar implements ISonar {
 								Log.i(TAG, "Adjusting for pulse at offset " + maxposa);
 							}
 
-							_maxposb = _maxposb - _maxposa;
-							if (_maxposb < 0) {
-								_maxposb += samples.length / 2;
-							}
-							
+							_maxposb = maxposb - maxposa;
 							_maxposa = 0;
 							_hitcount = 0;
 							_ts = System.currentTimeMillis();

@@ -66,9 +66,9 @@ public class SonogramShader implements IVisualizationShader {
 	
 	@Override
 	public void draw(float[] operator, float[] samples0, float[] samples1) {
-		GLES20.glUniform1fv(_operatorLocation, Math.min(operator.length, 44), operator, 0);
-		GLES20.glUniform1fv(_samplesLocation0, Math.min(samples0.length, 256), samples0, 0);
-        GLES20.glUniform1fv(_samplesLocation1, Math.min(samples1.length, 256), samples1, 0);
+		GLES20.glUniform1fv(_operatorLocation, Math.min(operator.length, 960), operator, 0);
+		GLES20.glUniform1fv(_samplesLocation0, Math.min(samples0.length, 1920), samples0, 0);
+        GLES20.glUniform1fv(_samplesLocation1, Math.min(samples1.length, 1920), samples1, 0);
         Shaders.checkGlError("glUniform1fv");
 
         // Bind the samples texture

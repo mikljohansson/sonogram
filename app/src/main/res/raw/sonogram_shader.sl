@@ -1,11 +1,11 @@
 #extension GL_OES_EGL_image_external : require
 precision mediump float;
 
-#define OPERATOR_SIZE 144
-#define BUFFER_SIZE 256
+#define OPERATOR_SIZE 960
+#define BUFFER_SIZE 1920
 
 const int samplerate = 48000;		// Sample rate in Hz
-const float baseline = 0.143;		// Distance between microphones in meters
+const float baseline = 0.120;		// Distance between microphones in meters
 const float speed = 340.29;			// Speed of sound in m/s
 
 const float micoffset = (baseline / speed) * (float(samplerate) / float(BUFFER_SIZE)) / 2.0;
